@@ -1,0 +1,183 @@
+import { fetchText, extractSitemapUrls } from '../lib/http.mjs';
+import { htmlToBullets, htmlToText, cleanBrandName, brandKey } from '../lib/html.mjs';
+import { deriveKeyFacts } from '../lib/facts.mjs';
+import { findViaSitemap } from '../lib/find.mjs';
+
+export const PLATFORM = {
+  id: 'woohoo',
+  name: 'Woohoo',
+  tagline: 'Pine Labs gift card marketplace · in-store and online brands',
+  accent: '#7b5cff',
+  initials: 'WH',
+  logo: 'logos/woohoo.png',
+  homeUrl: 'https://www.woohoo.in/',
+};
+
+const ORIGIN = 'https://www.woohoo.in';
+
+export async function listBrandUrls() {
+  const { body } = await fetchText(`${ORIGIN}/sitemap.xml`);
+  return extractSitemapUrls(body)
+    .filter((u) => u.startsWith(ORIGIN))
+    .map((u) => u.replace(`${ORIGIN}/`, '').replace(/\/$/, ''))
+    // The sitemap repeats every product under a dozen browse paths
+    // (/brands/…, /by-category/…). Only the root-level URL is canonical.
+    .filter((slug) => slug && !slug.includes('/'))
+    .filter((slug) => /(e-gift|instant-voucher|gift-card|gift-voucher|egv)/i.test(slug))
+    .map((slug) => ({ slug, url: `${ORIGIN}/${slug}` }));
+}
+
+/** Does Woohoo stock this brand right now? Matched against their sitemap. */
+export async function findBrand({ brandId, name }) {
+  return findViaSitemap(PLATFORM.id, listBrandUrls, { brandId, name });
+}
+
+/**
+ * Extract a balanced JSON object literal starting at the first `{` after `from`.
+ * `window.__INITIAL_STATE = {...}` isn't wrapped in a script tag we can slice on,
+ * so we have to walk the braces (string-aware) to find its end.
+ */
+function balancedJson(src, from) {
+  const start = src.indexOf('{', from);
+  if (start === -1) return null;
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let i = start; i < src.length; i++) {
+    const c = src[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return src.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function productState(html) {
+  const i = html.indexOf('window.__INITIAL_STATE');
+  if (i === -1) return null;
+  const raw = balancedJson(html, i);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw).appReducer?.product ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `offerShortDesc` ("10% Discount", "0.5% Discount") is the seller's own
+ * figure. The page <title> is NOT usable — Woohoo leaves stale marketing copy
+ * there, e.g. the Amazon Pay card whose title claims "Flat 50% Off" while the
+ * product actually gives 0.5%.
+ */
+function discountFrom(product) {
+  const m = String(product.offerShortDesc ?? '').match(/(\d{1,2}(?:\.\d{1,2})?)\s*%/);
+  return m ? Number(m[1]) : 0;
+}
+
+/**
+ * Woohoo's "Offers for you" strip, from `product.campaigns`.
+ *
+ * These are real, currently-live discounts that `offerShortDesc` knows nothing
+ * about: the Air India card has no card discount at all, yet pays 6% with UPI
+ * (code WOOHOO) and 5% on debit cards (WOOHOODC). Reading only
+ * `offerShortDesc` reported that card as "no discount", which is wrong.
+ *
+ * Conditional on a payment method and a coupon code, so they stay out of the
+ * headline figure and are shown as their own thing.
+ */
+function paymentOffersFrom(product) {
+  const now = Date.now();
+
+  return (product.campaigns ?? [])
+    .map((c) => {
+      const action = (c.actions ?? []).find((a) => a.valueType === 'PERCENTAGE') ?? c.actions?.[0];
+      if (!action) return null;
+
+      const value = Number(action.value);
+      if (!Number.isFinite(value) || value <= 0) return null;
+
+      // Woohoo leaves expired campaigns in the payload; a date window that has
+      // closed would put a dead offer on the page.
+      const start = Date.parse(c.startDate);
+      const end = Date.parse(c.endDate);
+      if (Number.isFinite(start) && start > now) return null;
+      if (Number.isFinite(end) && end < now) return null;
+
+      const cap = Number(action.maxValue);
+
+      return {
+        name: String(c.title || c.name || '').trim() || 'Payment offer',
+        discountPct: action.valueType === 'PERCENTAGE' ? value : 0,
+        flatOff: action.valueType === 'PERCENTAGE' ? null : value,
+        code: String(c.couponCode ?? '').trim() || null,
+        maxDiscount: Number.isFinite(cap) && cap > 0 ? cap : null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.discountPct - a.discountPct);
+}
+
+export async function fetchBrand({ slug, url }) {
+  const { body } = await fetchText(url);
+  const product = productState(body);
+  if (!product?.name) return null;
+
+  const price = product.price ?? {};
+  const discountPct = discountFrom(product);
+
+  const listed = (price.denominations ?? [])
+    .map(Number)
+    .filter((v) => Number.isFinite(v) && v > 0)
+    .sort((a, b) => a - b);
+
+  const min = Number(price.min);
+  const max = Number(price.max);
+
+  // "SLAB" = fixed denominations. "RANGE" = buy any amount between min and max.
+  const isRange = String(price.type).toUpperCase() === 'RANGE' || listed.length === 0;
+
+  if (isRange && !(Number.isFinite(min) && Number.isFinite(max) && max > 0)) return null;
+  if (!isRange && !listed.length) return null;
+
+  const terms = htmlToText(product.importantInstructions);
+  const description = htmlToText(product.shortDescription ?? product.description ?? '');
+
+  const name = cleanBrandName(product.name);
+  const paymentOffers = paymentOffersFrom(product);
+
+  return {
+    key: brandKey(product.name),
+    canonicalUrl: `${ORIGIN}/${product.url ?? slug}`,
+    name,
+    logo: product.images?.thumbnail ?? product.image ?? null,
+    image: product.images?.thumbnail ?? null,
+    website: null,
+    description: description ? description.slice(0, 240) : null,
+    offer: {
+      platformId: PLATFORM.id,
+      productUrl: url,
+      slug,
+      headlineDiscountPct: discountPct,
+      denominations: isRange ? [] : listed.map((value) => ({ value, discountPct })),
+      // An open-value card: the buyer types any amount within these bounds.
+      customAmount: isRange ? { min, max, discountPct } : null,
+      keyFacts: deriveKeyFacts([terms]),
+      otherTerms: htmlToBullets(product.importantInstructions),
+      paymentOffers,
+      redemption: null,
+      inStock: true,
+      deliveryEta: 'Instant · email',
+      maxQtyPerOrder: Number(product.quantity?.max) || null,
+    },
+  };
+}

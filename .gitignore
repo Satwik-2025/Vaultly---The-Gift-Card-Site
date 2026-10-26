@@ -1,0 +1,14 @@
+node_modules
+dist
+*.local
+.DS_Store
+*.tsbuildinfo
+
+
+# Environment variables / private credentials
+.env
+.env.local
+.env.*.local
+
+# Editor local settings
+.vscode/

@@ -1,0 +1,148 @@
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Icon } from './Icon';
+import { SearchBar } from './SearchBar';
+import { useSearchDock, useTheme } from '../hooks/useApp';
+import { SEARCH_DOCK_TRANSITION, SEARCH_LAYOUT_ID } from '../context/SearchDock';
+
+/** Signed-in user. Replace with real auth state when a backend exists. */
+const PROFILE = { name: 'Satwik Gupta', initials: 'SG' };
+const NAME_LIMIT = 15;
+
+const truncate = (name: string, limit = NAME_LIMIT) =>
+  name.length <= limit ? name : `${name.slice(0, limit - 1).trimEnd()}…`;
+
+export function Navbar() {
+  const { theme, toggle } = useTheme();
+  const { pathname } = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+  const { docked } = useSearchDock();
+  /**
+   * Phone-sized screens can't fit an inline search box: after the logo, theme,
+   * theme and profile there is barely 100px left, and the suggestions dropdown
+   * inherits that width. Below `sm` the bar becomes a sheet instead.
+   */
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+  // Any navigation (including picking a suggestion) closes the sheet.
+  useEffect(() => setMobileSearchOpen(false), [pathname]);
+
+  useEffect(() => {
+    if (!mobileSearchOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMobileSearchOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileSearchOpen]);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <header
+      className={`sticky top-0 z-40 transition-[padding] duration-300 ${scrolled ? 'pt-2' : 'pt-3 md:pt-5'}`}
+    >
+      <div className="shell">
+        <nav
+          className={`glass glass-sheen flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 md:gap-4 md:px-4 ${
+            scrolled ? 'shadow-2xl' : ''
+          }`}
+        >
+          <Link to="/" className="flex shrink-0 items-center gap-2.5 pl-1" aria-label="Vaultly home">
+            <span className="from-brand-500 to-mint-500 grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br shadow-lg">
+              <Icon name="tag" className="h-[18px] w-[18px] text-white" strokeWidth={2} />
+            </span>
+            <span className="font-display hidden text-lg font-extrabold tracking-tight sm:block">
+              Vaultly
+            </span>
+          </Link>
+
+          {/* The search bar lives here only once docked. While the hero owns it,
+              this slot stays empty and the bar flies in via its shared layoutId. */}
+          <div className="hidden min-w-0 flex-1 sm:block">
+            {docked && (
+              <motion.div
+                layoutId={SEARCH_LAYOUT_ID}
+                transition={SEARCH_DOCK_TRANSITION}
+                className="mx-auto max-w-md"
+              >
+                <SearchBar variant="compact" />
+              </motion.div>
+            )}
+          </div>
+
+          {/* Keeps the buttons pinned right on phones. */}
+          <div className="flex-1 sm:hidden" />
+
+          <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen((open) => !open)}
+              aria-label={mobileSearchOpen ? 'Close search' : 'Search gift cards'}
+              aria-expanded={mobileSearchOpen}
+              className={`btn btn-glass h-10 w-10 !p-0 sm:hidden ${
+                mobileSearchOpen ? '!border-[var(--border-strong)] !bg-[var(--surface-hover)]' : ''
+              }`}
+            >
+              <Icon name={mobileSearchOpen ? 'close' : 'search'} className="h-[18px] w-[18px]" />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+              className="btn btn-glass h-10 w-10 !p-0"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={theme}
+                  initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
+                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                  exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
+                  transition={{ duration: 0.22 }}
+                  className="grid place-items-center"
+                >
+                  <Icon name={theme === 'dark' ? 'moon' : 'sun'} className="h-[18px] w-[18px]" />
+                </motion.span>
+              </AnimatePresence>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-glass gap-2 !px-2 md:!px-3"
+              aria-label={`Signed in as ${PROFILE.name}`}
+              title={PROFILE.name}
+            >
+              <span className="from-brand-400 to-mint-400 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br text-[11px] font-bold text-white">
+                {PROFILE.initials}
+              </span>
+              <span className="hidden max-w-[9.5rem] truncate lg:inline">
+                {truncate(PROFILE.name)}
+              </span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Full-width search on phones: the input and its suggestions get the
+            whole screen instead of the ~100px left over in the bar. */}
+        <AnimatePresence>
+          {mobileSearchOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="mt-2 sm:hidden"
+            >
+              <SearchBar variant="hero" autoFocus />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </header>
+  );
+}
