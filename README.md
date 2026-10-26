@@ -18,10 +18,6 @@ npm run build     # production build into dist/
 npm run preview   # serve the built output
 ```
 
-> **Note on `.claude/launch.json`:** `runtimeExecutable` points at the absolute path of `node.exe`
-> because Node was installed mid-session and the shell's `PATH` was stale. You can simplify it to
-> `"runtimeExecutable": "npm"` / `"runtimeArgs": ["run", "dev"]` any time.
-
 ## Stack
 
 React 19 · TypeScript · Vite 7 · Tailwind CSS v4 · Framer Motion · React Router 7
