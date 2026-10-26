@@ -1,181 +1,231 @@
-# Vaultly — gift card price comparison
+<div align="center">
 
-Compares live gift card discounts across seller marketplaces and puts the four terms that
-actually decide a purchase right next to the price.
+# 🎁 Vaultly
 
-## Running it
+### Never overpay for a gift card again.
+
+One search compares every marketplace selling the card you want — and shows the four terms
+that decide whether the discount is actually worth it.
+
+<p>
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white">
+  <img alt="Vite 7" src="https://img.shields.io/badge/Vite-7-646CFF?style=flat-square&logo=vite&logoColor=white">
+  <img alt="Tailwind v4" src="https://img.shields.io/badge/Tailwind-v4-38BDF8?style=flat-square&logo=tailwindcss&logoColor=white">
+  <img alt="Live data" src="https://img.shields.io/badge/data-100%25%20scraped-4ad6a8?style=flat-square">
+</p>
+
+<img src="docs/home.png" alt="Vaultly home page" width="100%">
+
+</div>
+
+---
+
+## The problem
+
+A 20% discount is worthless if the card expires in three months, can't be combined with a sale,
+or forfeits whatever you don't spend. Marketplaces bury that in a wall of fine print — and they
+all word it differently, so you can't compare them side by side.
+
+Vaultly scrapes the sellers' own terms and puts the answers **in the same four rows for every
+seller**, right next to the price.
+
+<div align="center">
+  <img src="docs/compare.png" alt="Three sellers compared side by side" width="100%">
+  <em>Every seller that stocks the card, with its real payable price, payment-method discounts and its own freshness stamp.</em>
+</div>
+
+---
+
+## What it does
+
+| | |
+| --- | --- |
+| 🔍 **Compares every seller** | GyFTR, Woohoo and Amazon.in, merged per brand. 614 brands, 807 live offers. |
+| 📊 **Four facts, aligned** | Multiple cards per order · clubbing with offers · validity · leftover balance — same order, every panel, via CSS subgrid. |
+| 💸 **Real payable price** | Pick a denomination and see face value → discount → what you actually pay. |
+| 🏷️ **Payment-method offers** | Woohoo's Air India card shows 0% on paper but pays **6% via UPI** — surfaced with the coupon code. |
+| 💰 **Cashback on top** | CashKaro's full rate table, whether it works on app or only web, and whether it stacks with a gift card at all. |
+| ♻️ **Self-correcting catalog** | Opening the site syncs which cards still exist; opening a brand re-reads its live prices. |
+| 🌓 **Dark / light** | Diagonal view-transition wipe, full keyboard and mobile support. |
+
+---
+
+## The four things nobody tells you
+
+<div align="center">
+  <img src="docs/key-facts.png" alt="The four key facts compared across sellers" width="100%">
+</div>
+
+Each answer keeps **the seller's own sentence it was derived from**, shown as a quote. If a seller
+doesn't state something, it reads *"Not stated"* — never a plausible-looking guess.
+
+---
+
+## Cashback, honestly
+
+<div align="center">
+  <img src="docs/cashback.png" alt="CashKaro cashback card with full rate table" width="100%">
+</div>
+
+The headline rate always covers one slice of a catalogue, so it's shown as **"up to"** with every
+published rate one tap away. More importantly: **19 of the 32 brands paying cashback exclude
+gift-voucher payments**, so on those you pick one saving, not both. Vaultly says so, quoting the
+clause.
+
+---
+
+## Quick start
 
 ```bash
 npm install
-npm run scrape     # fetch live prices -> public/catalog.json
-npm run dev
+npm run scrape     # fetch live prices -> public/catalog.json  (~6 min)
+npm run dev        # http://localhost:5173
 ```
 
-Then open http://localhost:5173.
+In a hurry? `npm run scrape:fast` skips the browser-driven Amazon source (~2 min).
 
 ```bash
-npm run build     # production build into dist/
-npm run preview   # serve the built output
+npm run build      # production build into dist/
+npm run preview    # serve the built output
 ```
 
-## Stack
+**Optional backfills**
 
-React 19 · TypeScript · Vite 7 · Tailwind CSS v4 · Framer Motion · React Router 7
-Scraper: plain Node (no dependencies — `fetch` and regex only).
+```bash
+npm run fill:cashkaro   # cashback for every brand   (~2 min)
+npm run fill:amazon     # Amazon listings by brand name (~1 hr)
+```
+
+---
 
 ## Where the data comes from
 
-There is **no hand-authored catalog**. `npm run scrape` reads the sellers' own pages and writes
-`public/catalog.json`, which the app fetches once before its first render.
+There is **no hand-authored catalog**. Everything is read from the sellers' own pages.
 
-| Seller | How it's read | Status |
+| Source | How it's read | Status |
 | --- | --- | --- |
-| **GyFTR** | `__NEXT_DATA__` Redux blob on each brand page — discount, every denomination, the real T&C text, and per-payment-method rates. Brand list from `sitemap.xml`. | Full support |
-| **Woohoo** | schema.org `Product` / `AggregateOffer` JSON-LD, discount from the page title, terms from the T&C section. Brand list from `sitemap.xml`. | Full support |
-| **Amazon.in** | Driven through a real browser via Playwright — plain HTTP gets a bot check. Discount comes from the listing title ("Flat 8%"), denominations from the amount twister. | Full support |
-| Paytm | App-only, and **not supported**. `paytm.com/gift-cards` redirects to the homepage and `catalog.paytm.com/v1/g/gift-cards` reports `totalCount: 1` — a placeholder named "Test". Getting it from the app would mean intercepting their private API and defeating certificate pinning, which this project does not do. | Not possible |
+| **GyFTR** | `__NEXT_DATA__` Redux blob — discount, denominations, real T&C text, per-payment-method rates. Brands from `sitemap.xml`. | ✅ Full |
+| **Woohoo** | `window.__INITIAL_STATE` → `appReducer.product`. Discount from `offerShortDesc`, payment offers from `campaigns`. Brands from `sitemap.xml`. | ✅ Full |
+| **Amazon.in** | Real browser via Playwright — plain HTTP gets a bot check. Targeted search by brand name. | ⚠️ Rate-limited |
+| **CashKaro** | `__NEXT_DATA__` → full rate table, app/web eligibility, gift-voucher exclusions. | ✅ Full |
+| Paytm | App-only. `paytm.com/gift-cards` redirects to the homepage and the old catalog API returns `total_count: 0` for every query. Reading it would mean defeating certificate pinning on their app, which this project does not do. | ❌ Not possible |
 
-### Source gotchas worth knowing
+---
+
+## How freshness works
+
+Three layers, each doing only what it's cheap enough to do:
+
+| Layer | Covers | Cost | Trigger |
+| --- | --- | --- | --- |
+| **Catalog sync** | Which cards *exist* — adds newly listed, removes delisted | One sitemap per seller | Opening the site |
+| **Live re-check** | One brand's prices, across **every** seller + cashback | ~8 s, ~25 s with Amazon | Opening a brand page, or the button |
+| **Full scrape** | Everything | ~6 min | Manual or scheduled |
+
+The sync deliberately **doesn't** check prices — re-reading 700 product pages on every page view
+would be slow and pointless. And the re-check searches sellers that *aren't* currently listed, so a
+card a seller has just started stocking shows up on its own.
+
+Every panel stamps its own age. If one seller can't be reached, only that panel is marked stale —
+the others still read *"checked just now"*.
+
+<details>
+<summary><b>Guard rails that stop a bad run destroying good data</b></summary>
+
+<br>
+
+- **Delisting needs proof.** A seller is only dropped when its page returns a hard 404/410. A live
+  page with an empty product list is marked *sold out* instead — GyFTR leaves delisted pages up
+  and serving HTTP 200, and deleting on that once wiped a brand that came back an hour later.
+- **A broken sitemap removes nothing.** If more than 25% of a seller's listings vanish at once,
+  that's treated as a broken sitemap, not a closed shop.
+- **Blocked ≠ gone.** A CAPTCHA, timeout or network blip never counts as evidence of a delisting.
+- **One writer at a time.** Both the sync and the re-check used to read `catalog.json`, spend 30 s
+  on the network, then write their stale copy back — whichever finished last silently reverted the
+  other. All writes now go through a lock in `server/catalog-store.mjs`.
+- **The scrape won't shrink your catalog.** A half-failed run can't overwrite a healthy
+  `catalog.json`; the guard is per seller, because healthy sellers hide one seller's collapse.
+
+</details>
+
+<details>
+<summary><b>Scraper gotchas worth knowing</b></summary>
+
+<br>
 
 - **Woohoo's page `<title>` is not a usable discount source.** Their SEO copy goes stale — the
-  Amazon Pay card's title claims "Flat 50% Off" while the product actually gives 0.5%. The
-  discount is read from `appReducer.product.offerShortDesc` in `window.__INITIAL_STATE`.
-- **Open-value cards** are `price.type === "RANGE"` on Woohoo (Cinepolis: any amount ₹100–₹5,000).
-  These become `offer.customAmount` and render as a validated amount field, not fake min/max slabs.
-- **Amazon lists one brand under many ASINs** with *different* denomination sets. They're merged,
-  unioning denominations — Lenskart alone spans 3 listings.
-- **Amazon denominations must be matched on the ₹ sign.** A bare-number selector picks up the
-  artwork twister instead and silently reports 3 denominations where there are 9.
+  Amazon Pay card's title claims "Flat 50% Off" while the product gives 0.5%.
+- **Open-value cards** are `price.type === "RANGE"` and become a validated amount field, not fake
+  min/max slabs.
+- **Amazon lists one brand under many ASINs** with different denomination sets; they're merged,
+  unioning denominations.
+- **Amazon denominations must match on the ₹ sign.** A bare-number selector reads the artwork
+  twister and reports 3 denominations where there are 9.
 - **Category rules are `\b`-anchored.** Without word boundaries "blockbuster" matched `bus` and
   filed Zee5 under Travel.
-- **Subscription plans are folded into the parent brand.** Woohoo lists Zee5 as nine products
-  ("Zee5 Tamil 12M", "Zee5 12M 4K"); they appear as labelled packs in one Zee5 section, matching
-  how GyFTR models it. The suffix must *start* with a plan token, otherwise "Amazon Fresh" and
-  "Ajio Luxe" would wrongly collapse into their parents.
+- **Subscription plans fold into the parent brand.** Woohoo lists Zee5 as nine products; they
+  appear as labelled packs in one section. The suffix must *start* with a plan token, or "Amazon
+  Fresh" would collapse into "Amazon".
+- **Brand matching is deliberately strict.** An Amazon search for "The Body Shop" also returns
+  Bath & Bodyworks and Health and Glow — a loose match would staple a rival's price to the wrong
+  brand.
 
-The scraper is polite: bounded concurrency, a gap between requests, and backoff on 429/5xx.
+</details>
 
-### Amazon specifics
+<details>
+<summary><b>Getting past Amazon's bot detection</b></summary>
 
-Two things were needed to get past Amazon's bot detection, and both matter:
+<br>
 
-1. **Do not spoof the user agent.** A UA claiming Chrome 131 on a browser that is actually Chrome
-   149 is a fingerprint mismatch — Amazon responds by starting a bogus file download instead of
-   rendering the page.
-2. **Visit the homepage first.** Jumping straight to a search URL with no session cookies fails;
-   the adapter warms up on `amazon.in` once per browser context.
+1. **Don't spoof the user agent.** A UA claiming a different Chrome build than the real one is a
+   fingerprint mismatch — Amazon responds by starting a bogus file download instead of rendering.
+2. **Visit the homepage first.** Jumping straight to a search URL with no session cookies fails.
+3. **Go slowly.** One page at a time, 600 ms apart, capped at 6 pages per brand.
 
-It launches your **installed Chrome** (falling back to Edge, then Playwright's bundled build).
-Playwright's own Chromium download doesn't run on this machine — it needs a Visual C++ runtime
-that isn't installed — so the installed-browser path is the working one. Amazon runs at a lower
-concurrency than the others because it's a real browser, and it may still occasionally serve a
-CAPTCHA, in which case that brand is skipped rather than failing the run.
+Amazon still serves a CAPTCHA or a *"Click to continue shopping"* interstitial under load. Those
+are detected and reported as **blocked** — never mistaken for a delisting, and never clicked
+through. When it happens the panel keeps its previous numbers and says so.
 
-## Picking up newly-listed gift cards
+</details>
 
-**On page load**, the site asks `GET /api/discover` whether the sellers have listed anything since
-the last scrape. This is cheap — discovery costs one sitemap fetch per seller, and only genuinely
-new product pages are then fetched. New cards are added to the catalog and a banner names them.
+---
 
-Guard rails, in `server/discover.mjs`:
+## Project layout
 
-- Rate-limited to one real check every 10 minutes, so repeated page views don't re-walk sitemaps.
-- Caps each check at 25 new brands, so one visit can't take minutes.
-- **Amazon is excluded** — it needs a real browser and is rate-limit prone, which is the opposite of
-  what a page-load check should be. The daily scrape covers it.
-- A brand-new *plan* of an existing brand (say a new Zee5 pack) won't fold into that brand here,
-  because folding needs to see all its siblings. The full scrape handles it.
-- Needs a running dev/preview server. On a statically-hosted build the call fails silently and the
-  site just shows the last scraped catalog.
-
-Brand discovery is sitemap-driven rather than a fixed list, so the full scrape picks up new cards
-too. Nothing to configure per brand.
-
-To keep that happening without you remembering, register the bundled script as a daily task (run
-once, from the project folder):
-
-```bash
-schtasks /create /tn "Vaultly gift card refresh" /tr "\"%CD%\scripts\refresh.cmd\"" /sc daily /st 06:00
+```
+src/
+  components/      SitePanel · KeyFactsCompare · CashKaroCard · TermsSection
+  pages/           Home · SearchResults · BrandCompare
+  services/        catalog.ts — the only module components read data from
+  types.ts         domain model + fixed order of the four key facts
+server/
+  catalog-store.mjs  the single writer for catalog.json (locked, atomic)
+  refresh.mjs        re-reads one brand from every seller      GET /api/refresh/:brandId
+  discover.mjs       adds newly listed / removes delisted      GET /api/discover
+scripts/
+  scrape.mjs       CLI orchestrator
+  sources/*.mjs    one adapter per seller — add a file to add a seller
+  lib/facts.mjs    the four-key-fact derivation rules
+  lib/build.mjs    classification, folding, merging
 ```
 
-It logs to `%TEMP%\vaultly-refresh.log`, and the per-seller collapse guard means a blocked run
-leaves your existing catalog intact. Remove it with
-`schtasks /delete /tn "Vaultly gift card refresh" /f`.
+The two API routes are Vite middleware, so there's no second process to start — they work under
+both `npm run dev` and `npm run preview`. On a statically hosted `dist/` they simply fail silently
+and the site serves the last scraped catalog.
 
-So freshness comes from three places:
+---
 
-| | Covers | Trigger |
-| --- | --- | --- |
-| Discovery on page load | Newly-listed cards on GyFTR + Woohoo | Automatic, every visit |
-| Daily scheduled scrape | New brands + all prices, all sellers | Automatic |
-| "Re-check prices now" | One brand, every seller, every source page | Button on the brand page |
-| `npm run scrape:fast` | Everything except Amazon | Manual, ~2 min |
-
-## Live re-check
-
-The brand page has a **"Re-check prices now"** button that re-reads that one brand from every
-seller that stocks it and writes the result back to `catalog.json` — roughly 0.7 s for the HTTP
-sellers, ~3 s when Amazon is involved.
-
-It's served by `server/refresh.mjs`, mounted as Vite middleware at `GET /api/refresh/:brandId`, so
-there is no second process to start — it works under both `npm run dev` and `npm run preview`.
-Refreshes are serialised per brand, and a seller that errors keeps its previous price rather than
-blanking out.
-
-**A re-check must revisit every source page.** An offer is often the merge of several product pages
-— Woohoo lists Zee5 as nine subscription packs, Amazon lists Lenskart under three ASINs — so each
-offer records `sources: [{url, label}]` and the refresh re-fetches all of them and re-merges.
-Fetching only `productUrl` replaced all nine Zee5 packs with whichever single one it fetched.
-
-Note this endpoint only exists while a Vite server is running. A statically-hosted `dist/` still
-works fine — the button will just report the failure instead of silently showing stale data.
-
-### Scraper usage
-
-```bash
-node scripts/scrape.mjs                          # everything (~6 min with Amazon)
-node scripts/scrape.mjs --only gyftr,woohoo      # skip the slow browser-driven source
-node scripts/scrape.mjs --limit 40               # first 40 brands per seller
-node scripts/scrape.mjs --only gyftr
-node scripts/scrape.mjs --brands dominos,healthkart
-node scripts/scrape.mjs --concurrency 8
-```
-
-It refuses to overwrite a healthy `catalog.json` with a much smaller result (a half-failed run
-can't wipe your data); pass `--force` to override.
-
-### The honesty rule
-
-The scraper never invents a value. `scripts/lib/facts.mjs` derives the four key facts with
-regex rules over the seller's own terms text, and **every fact keeps the sentence it came from** —
-rendered as a quote under the answer on the brand page. Anything the seller doesn't state comes
-back as `status: "unknown"` → "Not stated", never a plausible-looking guess.
-
-Rules also carry `reject` patterns to kill false positives. Example: "If any balance remains,
-select Pay in Cash" is about settling the rest of the *bill*, not the voucher's leftover value, so
-it's explicitly excluded from the partial-use rule.
-
-Coverage is honest rather than flattering — Gyftr states stacking and clubbing on nearly every
-brand, but rarely publishes validity, so many validity chips read "Not stated".
-
-### Layout
-
-| File | What lives there |
-| --- | --- |
-| `scripts/scrape.mjs` | CLI orchestrator — runs the sources, writes the catalog |
-| `scripts/lib/build.mjs` | Classification, folding and merging; shared by the scrape and discovery |
-| `scripts/sources/*.mjs` | One adapter per seller; add a file here to add a seller |
-| `server/discover.mjs` | Finds cards listed since the last scrape (page-load check) |
-| `server/refresh.mjs` | Re-reads one brand from every seller (the re-check button) |
-| `scripts/lib/facts.mjs` | The four-key-fact derivation rules |
-| `scripts/lib/http.mjs` | Polite fetch, retries, concurrency pool |
-| `src/services/catalog.ts` | The only module components read data from |
-| `src/types.ts` | Domain model + the fixed order/labels of the four key facts |
-
-### Adding a seller
+## Adding a seller
 
 Create `scripts/sources/<name>.mjs` exporting `PLATFORM`, `listBrandUrls()` and
-`fetchBrand({slug, url})` returning `{ key, name, logo, offer }`, then register it in the
-`SOURCES` map in `scrape.mjs`. Brands merge across sellers on `brandKey(name)`, which strips
-apostrophes and gift-card boilerplate so "DOMINO'S" and "Domino's E-Gift Voucher" collapse
-together.
+`fetchBrand({ slug, url })` returning `{ key, name, logo, offer }`, then register it in the
+`SOURCES` map. Brands merge across sellers on `brandKey(name)`, which strips apostrophes and
+gift-card boilerplate so `DOMINO'S` and `Domino's E-Gift Voucher` collapse together.
+
+---
+
+<div align="center">
+<sub>Prices and terms are scraped from public seller pages and can change at any time.<br>
+Always confirm on the seller's own page before buying — every panel links straight to it.</sub>
+</div>
