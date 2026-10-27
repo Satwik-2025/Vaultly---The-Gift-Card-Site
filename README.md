@@ -99,6 +99,35 @@ npm run fill:amazon     # Amazon listings by brand name (~1 hr)
 
 ---
 
+## Deploying
+
+The site deploys to **Vercel** straight from this repository — no server to run.
+
+1. Sign in at [vercel.com](https://vercel.com) with GitHub.
+2. **Add New → Project**, import this repository, and press **Deploy**. Nothing to configure —
+   `vercel.json` sets the build, the page routing and the API functions.
+
+Every push to `main` redeploys.
+
+What runs where once deployed:
+
+| Feature | Deployed site |
+| --- | --- |
+| Browsing, search, compare, themes, accounts, saved cards | ✅ Static |
+| **Re-check prices now** — GyFTR, Woohoo, CashKaro | ✅ Live, via `api/refresh/[brandId].mjs` (~1–2 s) |
+| Re-check — Amazon | 🕒 Daily. Needs a real browser, too heavy for a function; the panel shows its age |
+| New and delisted cards | 🕒 Daily, via the scheduled scrape |
+
+**The daily scrape** is `.github/workflows/refresh-prices.yml`. At 06:00 IST it scrapes every
+seller (Amazon included), refreshes cashback, commits `catalog.json` and so triggers a redeploy.
+Run it any time from the repository's **Actions → Refresh prices → Run workflow**. A blocked
+Amazon run keeps yesterday's Amazon prices rather than wiping them.
+
+A live re-check returns fresh prices to whoever pressed it but doesn't save them — serverless
+filesystems are read-only. The shared catalog moves forward once a day.
+
+---
+
 ## Where the data comes from
 
 There is **no hand-authored catalog**. Everything is read from the sellers' own pages.

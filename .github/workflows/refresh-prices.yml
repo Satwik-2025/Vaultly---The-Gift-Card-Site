@@ -1,0 +1,75 @@
+# Keeps the deployed catalog current.
+#
+# On the deployed site "Re-check prices now" reads GyFTR, Woohoo and CashKaro
+# live, but can't save what it reads (serverless filesystems are read-only) and
+# can't reach Amazon (that needs a real browser). This job does the rest once a
+# day: a full scrape of every seller, including Amazon, which adds newly listed
+# cards and drops delisted ones. It commits catalog.json, and the push
+# redeploys the site.
+name: Refresh prices
+
+on:
+  schedule:
+    # 00:30 UTC is 06:00 in India — fresh prices before the day starts.
+    # Daily rather than hourly on purpose: Amazon rate-limits hard, and a
+    # blocked run returns nothing useful.
+    - cron: '30 0 * * *'
+  # A "Run workflow" button on the Actions tab, for refreshing on demand.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Never let two runs race to commit the same file.
+concurrency:
+  group: refresh-prices
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The Amazon adapter prefers the runner's installed Chrome and falls back
+      # to this one.
+      - name: Install a browser for Amazon
+        run: npx playwright install --with-deps chromium
+
+      - name: Scrape GyFTR and Woohoo
+        run: node scripts/scrape.mjs --only gyftr,woohoo
+
+      # Run separately so an Amazon CAPTCHA can't cost the other sellers their
+      # update. If Amazon is blocked, the scraper's safety guard refuses to
+      # overwrite its existing offers and exits non-zero; the run carries on
+      # with yesterday's Amazon prices.
+      - name: Scrape Amazon
+        continue-on-error: true
+        run: node scripts/scrape.mjs --only amazon
+
+      - name: Refresh CashKaro cashback
+        continue-on-error: true
+        run: node scripts/fill-cashkaro.mjs
+
+      # Committed as the repository owner (via the private no-reply address)
+      # rather than as github-actions[bot], so the bot doesn't appear in the
+      # repository's Contributors list.
+      - name: Commit the new catalog
+        run: |
+          git config user.name "Satwik-2025"
+          git config user.email "226081698+Satwik-2025@users.noreply.github.com"
+          git add public/catalog.json
+          if git diff --cached --quiet; then
+            echo "No price changes today."
+          else
+            git commit -m "Refresh prices ($(date -u +%Y-%m-%d))"
+            git push
+          fi

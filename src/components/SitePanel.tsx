@@ -424,8 +424,11 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
           <p className="stack-warning flex items-start gap-2 rounded-xl border px-3 py-2 text-[0.7rem] leading-relaxed">
             <Icon name="clock" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
-              <span className="font-bold">Price from {checkedAgo}.</span> We couldn't re-read{' '}
-              {platform.name} just now — open the button above for their live price.
+              {/* Worded to be true both when a seller failed and when it's
+                  deliberately left to the daily scrape (Amazon on the
+                  deployed site) — "couldn't" would imply something broke. */}
+              <span className="font-bold">Price from {checkedAgo}.</span> This check didn't
+              re-read {platform.name} — open the button above for their live price.
             </span>
           </p>
         ) : (
