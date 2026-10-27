@@ -12,3 +12,6 @@ dist
 
 # Editor local settings
 .vscode/
+
+# Partial writes from the catalog store (left behind if a write is interrupted)
+*.tmp
