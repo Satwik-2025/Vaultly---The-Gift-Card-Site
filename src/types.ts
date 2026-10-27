@@ -61,6 +61,13 @@ export interface Denomination {
    * e.g. Zee5's "Premium HD Annual Pack".
    */
   label?: string | null;
+  /**
+   * The listing that actually sells this slab. One seller can have several
+   * listings for a brand with different slabs and different discounts —
+   * Woohoo sells PhonePe at 15% (₹5–₹2,500) and 0% (₹10–₹10,000) — so the buy
+   * button has to follow the slab, not the offer.
+   */
+  sourceUrl?: string | null;
 }
 
 /** An open-value card: the buyer types any amount within these bounds. */

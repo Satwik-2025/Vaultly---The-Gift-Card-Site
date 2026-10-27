@@ -121,6 +121,9 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
    * page. Falls back to the offer's main URL when there's nothing more specific.
    */
   const buyUrl =
+    // The slab's own listing wins: matching on label alone sent every PhonePe
+    // slab to the first source, because both of Woohoo's listings have no label.
+    denom?.sourceUrl ||
     (denom?.label && offer.sources?.find((s) => s.label === denom.label)?.url) ||
     offer.productUrl;
 

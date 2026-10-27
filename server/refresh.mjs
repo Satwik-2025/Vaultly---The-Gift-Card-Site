@@ -43,7 +43,11 @@ function mergeFetched(fetched, checkedAt) {
       const label = d.label ?? source.label ?? null;
       const key = `${d.value}|${label ?? ''}`;
       const existing = byValue.get(key);
-      if (!existing || d.discountPct > existing.discountPct) byValue.set(key, { ...d, label });
+      // `sourceUrl` is what the buy button follows — a seller's listings can
+      // carry different slabs, so the slab has to name its own page.
+      if (!existing || d.discountPct > existing.discountPct) {
+        byValue.set(key, { ...d, label, sourceUrl: source.url });
+      }
     }
   }
 

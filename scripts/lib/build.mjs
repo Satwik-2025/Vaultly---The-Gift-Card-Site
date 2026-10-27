@@ -20,8 +20,8 @@ export const CATEGORY_RULES = [
   ['Grocery', /\b(grocery|groceries|bigbasket|big ?basket|blinkit|zepto|instamart|dmart|supermarket|spencer|kirana|daily needs|milkbasket|natures basket)\b/i],
   ['Food & Beverage', /\b(pizza|dominos?|kfc|mcdonald|burger|swiggy|zomato|coffee|cafe|starbucks|barbeque|barbecue|biryani|restaurants?|subway|dunkin|baskin|haldiram|chai|food|dining|bakery|bakingo|faasos|behrouz|wow ?momo|tim hortons|beer|pub)\b/i],
   ['Health & Beauty', /\b(nykaa|health ?kart|healthcare|pharmacy|pharma|apollo|wellness|beauty|cosmetics?|purplle|mamaearth|plum|forest essentials|1mg|pharmeasy|supplements?|nutrition|gym|fitness|cult|salon|spa|lenskart|titan eye)\b/i],
-  ['Electronics', /\b(croma|reliance digital|vijay sales|electronics?|appliances?|laptops?|mobiles?|apple|samsung|oneplus|boat|noise|jbl|headphones?|gadgets?)\b/i],
-  ['Fashion', /\b(myntra|ajio|fashion|apparel|clothing|clothes|shoes?|footwear|jewell?ery|tanishq|titan|lifestyle|pantaloons?|westside|zara|puma|adidas|nike|levi|allen solly|van heusen|peter england|bata|decathlon|birkenstock|eyewear|watches|bags?|luxe)\b/i],
+  ['Electronics', /\b(croma|reliance digital|vijay sales|electronics?|appliances?|laptops?|mobiles?|apple|samsung|oneplus|boat|noise|jbl|headphones?|gadgets?|earphones?|earbuds?|smart ?watch(es)?|speakers?|soundbars?|wearables?|power ?banks?|chargers?|televisions?|refrigerators?|washing machines?)\b/i],
+  ['Fashion', /\b(myntra|ajio|fashion|apparel|clothing|clothes|shoes?|footwear|jewell?ery|tanishq|titan|lifestyle|pantaloons?|westside|zara|puma|adidas|nike|levi|allen solly|van heusen|peter england|bata|decathlon|birkenstock|eyewear|watches|bags?|luxe|activewear|athleisure|leggings|joggers|swimwear|innerwear|lingerie|sports ?bras?|t-?shirts?|denim|kurtas?|sarees?|ethnic ?wear|outfits?|wardrobe)\b/i],
   ['e-Commerce', /\b(amazon|flipkart|meesho|snapdeal|tata cliq|shopping|marketplace|online store)\b/i],
 ];
 
@@ -32,10 +32,40 @@ export const CATEGORY_RULES = [
  * your screen", Amazon Pay's mentions "mobile recharge", and a fuel voucher and
  * a silver coin both mentioned electronics — all three landed under Electronics.
  */
-export const categorise = (name, description = '') =>
-  CATEGORY_RULES.find(([, re]) => re.test(name))?.[0] ??
-  CATEGORY_RULES.find(([, re]) => re.test(description))?.[0] ??
-  'Other';
+/**
+ * How many *distinct* terms of a rule the text uses.
+ *
+ * A single word decides nothing in a description — Blissclub sells activewear
+ * but its blurb mentions "travel and dance breaks", and that lone word filed it
+ * under Travel. Counting distinct hits lets the real subject win.
+ */
+const strength = (re, text) => {
+  const global = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+  return new Set((text.match(global) ?? []).map((m) => m.toLowerCase())).size;
+};
+
+export const categorise = (name, description = '') => {
+  // The brand name is decisive when it matches — it can't be incidental.
+  const byName = CATEGORY_RULES.find(([, re]) => re.test(name))?.[0];
+  if (byName) return byName;
+
+  /*
+    Otherwise fall back to the description — but rank the categories instead of
+    taking the first that matches at all. Marketing copy name-drops other
+    categories constantly ("perfect for travel", "straight to your screen"), and
+    first-match let one stray word win: Blissclub sells activewear and was filed
+    under Travel. The best-supported category wins instead, so four apparel
+    terms beat one passing "travel". Ties go to the earlier (more specific)
+    rule, and a single clear signal still counts — plenty of brands have a
+    one-line blurb naming their category exactly once.
+  */
+  let best = null;
+  for (const [category, re] of CATEGORY_RULES) {
+    const score = strength(re, description);
+    if (score > (best?.score ?? 0)) best = { category, score };
+  }
+  return best ? best.category : 'Other';
+};
 
 /** Deterministic, evenly-spread brand gradient — same brand, same colours. */
 export function gradientFor(key) {
@@ -87,8 +117,20 @@ export function preferOffer(a, b) {
           ? a
           : b;
 
+  /*
+    Each denomination remembers the listing that actually sells it.
+
+    One seller often has several listings for a brand with *different* slabs —
+    Woohoo lists PhonePe twice, a 15% card covering ₹5–₹2,500 and a 0% "special"
+    covering ₹10–₹10,000. Without this the buy button fell back to the first
+    source for every slab, so picking ₹2,000 sent the buyer to a listing that
+    doesn't sell ₹2,000.
+  */
+  const stamp = (offer) =>
+    offer.denominations.map((d) => ({ ...d, sourceUrl: d.sourceUrl ?? offer.productUrl ?? null }));
+
   const byValue = new Map();
-  for (const d of [...a.denominations, ...b.denominations]) {
+  for (const d of [...stamp(a), ...stamp(b)]) {
     // Keyed by value *and* label: several Zee5 language packs share ₹699 but
     // are different products, so they must not collapse into one another.
     const k = `${d.value}|${d.label ?? ''}`;
