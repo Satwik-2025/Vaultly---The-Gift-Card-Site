@@ -7,6 +7,8 @@ import { NewCardsBanner } from './components/NewCardsBanner';
 import { Home } from './pages/Home';
 import { SearchResults } from './pages/SearchResults';
 import { BrandCompare } from './pages/BrandCompare';
+import { Settings } from './pages/Settings';
+import { SignIn } from './pages/SignIn';
 
 /**
  * Route changes should land at the top of the new page — but never fight an
@@ -63,6 +65,9 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/gift-card/:brandId" element={<BrandCompare />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/signin" element={<SignIn mode="signin" />} />
+          <Route path="/signup" element={<SignIn mode="signup" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

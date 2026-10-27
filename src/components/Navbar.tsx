@@ -3,18 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Icon } from './Icon';
 import { SearchBar } from './SearchBar';
-import { useSearchDock, useTheme } from '../hooks/useApp';
+import { useSearchDock } from '../hooks/useApp';
+import { ThemeMenu } from './ThemeMenu';
+import { ProfileMenu } from './ProfileMenu';
 import { SEARCH_DOCK_TRANSITION, SEARCH_LAYOUT_ID } from '../context/SearchDock';
 
-/** Signed-in user. Replace with real auth state when a backend exists. */
-const PROFILE = { name: 'Satwik Gupta', initials: 'SG' };
-const NAME_LIMIT = 15;
-
-const truncate = (name: string, limit = NAME_LIMIT) =>
-  name.length <= limit ? name : `${name.slice(0, limit - 1).trimEnd()}…`;
-
 export function Navbar() {
-  const { theme, toggle } = useTheme();
   const { pathname } = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const { docked } = useSearchDock();
@@ -91,39 +85,9 @@ export function Navbar() {
               <Icon name={mobileSearchOpen ? 'close' : 'search'} className="h-[18px] w-[18px]" />
             </button>
 
-            <button
-              type="button"
-              onClick={toggle}
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-              className="btn btn-glass h-10 w-10 !p-0"
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={theme}
-                  initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
-                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
-                  exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
-                  transition={{ duration: 0.22 }}
-                  className="grid place-items-center"
-                >
-                  <Icon name={theme === 'dark' ? 'moon' : 'sun'} className="h-[18px] w-[18px]" />
-                </motion.span>
-              </AnimatePresence>
-            </button>
+            <ThemeMenu />
 
-            <button
-              type="button"
-              className="btn btn-glass gap-2 !px-2 md:!px-3"
-              aria-label={`Signed in as ${PROFILE.name}`}
-              title={PROFILE.name}
-            >
-              <span className="from-brand-400 to-mint-400 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br text-[11px] font-bold text-white">
-                {PROFILE.initials}
-              </span>
-              <span className="hidden max-w-[9.5rem] truncate lg:inline">
-                {truncate(PROFILE.name)}
-              </span>
-            </button>
+            <ProfileMenu />
           </div>
         </nav>
 

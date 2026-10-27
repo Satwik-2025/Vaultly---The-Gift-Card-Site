@@ -73,6 +73,130 @@
   color-scheme: light;
 }
 
+/* ---- Theme palettes -----------------------------------------------------
+   A palette only restates what makes it distinct: the accent ramp and the
+   aurora. Everything else is inherited from the dark defaults in :root, or
+   from `.light` for the light-mode ones, so adding a theme stays a small,
+   self-contained block rather than a second copy of the design system.
+
+   `--color-brand-*` and `--color-mint-*` are the Tailwind tokens, so
+   overriding them here re-skins every `bg-brand-500`, `text-mint-400` and so
+   on without touching a single component.
+------------------------------------------------------------------------- */
+
+[data-theme='ocean'] {
+  --color-brand-300: #8fe3f5;
+  --color-brand-400: #4ecde8;
+  --color-brand-500: #1fb6d6;
+  --color-brand-600: #0e93b3;
+  --color-mint-400: #5de0c0;
+  --color-mint-500: #27c3a3;
+
+  --bg: #03121a;
+  --bg-elevated: #06202c;
+  --ring-focus: rgb(78 205 232 / 0.65);
+  --popover-bg: rgb(6 32 44 / 0.97);
+
+  --aurora-1: #1fb6d6;
+  --aurora-2: #2f6bff;
+  --aurora-3: #27c3a3;
+}
+
+[data-theme='ember'] {
+  --color-brand-300: #ffc09a;
+  --color-brand-400: #ff9b63;
+  --color-brand-500: #ff7a3d;
+  --color-brand-600: #e45a1d;
+  --color-mint-400: #ffd166;
+  --color-mint-500: #f0b429;
+
+  --bg: #140705;
+  --bg-elevated: #20100b;
+  --ring-focus: rgb(255 155 99 / 0.65);
+  --popover-bg: rgb(32 16 11 / 0.97);
+
+  --aurora-1: #ff7a3d;
+  --aurora-2: #e0245e;
+  --aurora-3: #f0b429;
+}
+
+[data-theme='forest'] {
+  --color-brand-300: #9ae6bd;
+  --color-brand-400: #5fd598;
+  --color-brand-500: #35c77a;
+  --color-brand-600: #1fa360;
+  --color-mint-400: #9fe870;
+  --color-mint-500: #74cf45;
+
+  --bg: #04120c;
+  --bg-elevated: #082018;
+  --ring-focus: rgb(95 213 152 / 0.6);
+  --popover-bg: rgb(8 32 24 / 0.97);
+
+  --aurora-1: #35c77a;
+  --aurora-2: #15a3a3;
+  --aurora-3: #9fe870;
+}
+
+[data-theme='grape'] {
+  --color-brand-300: #e3b0ff;
+  --color-brand-400: #d383ff;
+  --color-brand-500: #c45cff;
+  --color-brand-600: #a132e0;
+  --color-mint-400: #ff8ad1;
+  --color-mint-500: #ef5bb4;
+
+  --bg: #120418;
+  --bg-elevated: #1d0a26;
+  --ring-focus: rgb(211 131 255 / 0.65);
+  --popover-bg: rgb(29 10 38 / 0.97);
+
+  --aurora-1: #c45cff;
+  --aurora-2: #6d5efc;
+  --aurora-3: #ef5bb4;
+}
+
+/* Light-mode palettes. These sit on top of `.light`, which the provider also
+   applies, so they inherit its surfaces and only restate colour. */
+[data-theme='linen'] {
+  --color-brand-300: #e0a98a;
+  --color-brand-400: #cf7b50;
+  --color-brand-500: #b2542f;
+  --color-brand-600: #8d3f20;
+  --color-mint-400: #7fa65a;
+  --color-mint-500: #5f8a3c;
+
+  --bg: #f6f2ea;
+  --bg-elevated: #fffdf8;
+  --ring-focus: rgb(178 84 47 / 0.5);
+  --popover-bg: rgb(255 253 248 / 0.98);
+
+  --aurora-1: #cf7b50;
+  --aurora-2: #d8a657;
+  --aurora-3: #7fa65a;
+  --aurora-alpha: 0.26;
+}
+
+[data-theme='mono'] {
+  --color-brand-300: #a1a1aa;
+  --color-brand-400: #71717a;
+  --color-brand-500: #3f3f46;
+  --color-brand-600: #27272a;
+  --color-mint-400: #52525b;
+  --color-mint-500: #3f3f46;
+
+  --bg: #f4f4f5;
+  --bg-elevated: #ffffff;
+  --ring-focus: rgb(63 63 70 / 0.45);
+  --popover-bg: rgb(255 255 255 / 0.98);
+
+  --aurora-1: #71717a;
+  --aurora-2: #a1a1aa;
+  --aurora-3: #52525b;
+  /* Greyscale aurora would read as dirt rather than light — keep it faint. */
+  --aurora-alpha: 0.14;
+}
+
 @layer base {
   * {
     border-color: var(--border);
