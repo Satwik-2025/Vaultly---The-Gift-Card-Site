@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Icon, type IconName } from './../components/Icon';
-import { useAuth, useTheme } from '../hooks/useApp';
+import { useAuth, useSaved, useTheme } from '../hooks/useApp';
+import { BrandMark } from '../components/BrandMark';
+import { bestDiscount, formatPct, getBrand } from '../services/catalog';
 import type { Theme } from '../themes';
 
 /**
@@ -172,10 +174,16 @@ function ThemeCard({
 export function Settings() {
   const { theme, themes, select } = useTheme();
   const { user, updateProfile } = useAuth();
+  const { saved, remove, clear } = useSaved();
+  // A saved id can outlive its brand — sellers delist cards and the sync drops
+  // them — so resolve through the catalog and skip anything that's gone.
+  const savedBrands = saved.map((id) => getBrand(id)).filter((b) => b !== undefined);
   const [prefs, setPrefs] = useState<Prefs>(readPrefs);
   const [name, setName] = useState(user?.name ?? '');
   const [age, setAge] = useState(String(user?.age ?? ''));
-  const [saved, setSaved] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+  /** Details are read-only until you ask to change them. */
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     try {
@@ -188,7 +196,17 @@ export function Settings() {
   useEffect(() => {
     setName(user?.name ?? '');
     setAge(String(user?.age ?? ''));
+    setEditing(false);
   }, [user]);
+
+  // Nothing to save until something actually differs from what's stored.
+  const dirty = Boolean(user) && (name.trim() !== user?.name || age !== String(user?.age));
+
+  const cancelEdit = () => {
+    setName(user?.name ?? '');
+    setAge(String(user?.age ?? ''));
+    setEditing(false);
+  };
 
   const setPref = (key: keyof Prefs) => (v: boolean) => setPrefs((p) => ({ ...p, [key]: v }));
 
@@ -199,8 +217,9 @@ export function Settings() {
       name: name.trim() || user!.name,
       age: Number.isFinite(parsed) && parsed > 0 ? parsed : user!.age,
     });
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2000);
+    setEditing(false);
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 2000);
   };
 
   return (
@@ -217,6 +236,101 @@ export function Settings() {
       </motion.header>
 
       <div className="mt-6 grid gap-4">
+        {/* -------------------------------- Account -------------------------- */}
+        <Section
+          id="account"
+          icon="user"
+          title="Account"
+          description={user ? 'Your details, kept on this device.' : 'Not signed in.'}
+        >
+          {user ? (
+            <form onSubmit={saveProfile} className="grid gap-3 sm:max-w-md">
+              <label className="grid gap-1.5">
+                <span className="text-faint text-[0.65rem] font-bold tracking-[0.14em] uppercase">
+                  Name
+                </span>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  readOnly={!editing}
+                  className={`field ${editing ? '' : 'cursor-default opacity-70'}`}
+                  autoComplete="name"
+                />
+              </label>
+              <label className="grid gap-1.5">
+                <span className="text-faint text-[0.65rem] font-bold tracking-[0.14em] uppercase">
+                  Age
+                </span>
+                <input
+                  value={age}
+                  onChange={(e) => setAge(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                  readOnly={!editing}
+                  inputMode="numeric"
+                  className={`field ${editing ? '' : 'cursor-default opacity-70'}`}
+                />
+              </label>
+              <label className="grid gap-1.5">
+                <span className="text-faint text-[0.65rem] font-bold tracking-[0.14em] uppercase">
+                  Email
+                </span>
+                <input value={user.email} readOnly className="field cursor-default opacity-50" />
+                <span className="text-faint text-xs">
+                  Your email identifies the account and can't be changed.
+                </span>
+              </label>
+
+              {/*
+                Edit first, then save. A lone "Save changes" on live inputs
+                invites accidental edits and gives no way back — this makes the
+                fields inert until you ask, and Save only lights up once
+                something has actually changed.
+              */}
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                {editing ? (
+                  <>
+                    <button
+                      type="submit"
+                      disabled={!dirty}
+                      className={`btn btn-primary !px-5 ${dirty ? '' : 'pointer-events-none opacity-45'}`}
+                    >
+                      <Icon name="check" className="h-4 w-4" />
+                      Save changes
+                    </button>
+                    <button type="button" onClick={cancelEdit} className="btn btn-glass !px-4">
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="btn btn-glass !px-5"
+                  >
+                    <Icon name="filter" className="h-4 w-4" />
+                    Edit details
+                  </button>
+                )}
+
+                {justSaved && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6ee7b7]">
+                    <Icon name="check" className="h-3.5 w-3.5" />
+                    Saved
+                  </span>
+                )}
+              </div>
+            </form>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Link to="/signin" className="btn btn-primary !px-5">
+                Sign in
+              </Link>
+              <Link to="/signup" className="btn btn-glass !px-5">
+                Create an account
+              </Link>
+            </div>
+          )}
+        </Section>
+
         {/* ------------------------------- Appearance ------------------------ */}
         <Section
           id="appearance"
@@ -237,67 +351,6 @@ export function Settings() {
           <p className="text-faint mt-3 text-xs">
             Hover the theme button in the header to switch without coming here.
           </p>
-        </Section>
-
-        {/* -------------------------------- Account -------------------------- */}
-        <Section
-          id="account"
-          icon="user"
-          title="Account"
-          description={user ? 'Your details, kept on this device.' : 'Not signed in.'}
-        >
-          {user ? (
-            <form onSubmit={saveProfile} className="grid gap-3 sm:max-w-md">
-              <label className="grid gap-1.5">
-                <span className="text-faint text-[0.65rem] font-bold tracking-[0.14em] uppercase">
-                  Name
-                </span>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="field"
-                  autoComplete="name"
-                />
-              </label>
-              <label className="grid gap-1.5">
-                <span className="text-faint text-[0.65rem] font-bold tracking-[0.14em] uppercase">
-                  Age
-                </span>
-                <input
-                  value={age}
-                  onChange={(e) => setAge(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                  inputMode="numeric"
-                  className="field"
-                />
-              </label>
-              <label className="grid gap-1.5">
-                <span className="text-faint text-[0.65rem] font-bold tracking-[0.14em] uppercase">
-                  Email
-                </span>
-                <input value={user.email} readOnly className="field opacity-60" />
-              </label>
-              <div className="mt-1 flex items-center gap-3">
-                <button type="submit" className="btn btn-primary !px-5">
-                  Save changes
-                </button>
-                {saved && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6ee7b7]">
-                    <Icon name="check" className="h-3.5 w-3.5" />
-                    Saved
-                  </span>
-                )}
-              </div>
-            </form>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <Link to="/signin" className="btn btn-primary !px-5">
-                Sign in
-              </Link>
-              <Link to="/signup" className="btn btn-glass !px-5">
-                Create an account
-              </Link>
-            </div>
-          )}
         </Section>
 
         {/* ----------------------------- Notifications ----------------------- */}
@@ -340,15 +393,59 @@ export function Settings() {
           id="saved"
           icon="tag"
           title="Saved cards"
-          description="Cards you've bookmarked to watch."
+          description={
+            savedBrands.length
+              ? `${savedBrands.length} card${savedBrands.length === 1 ? '' : 's'} you're watching.`
+              : "Cards you've bookmarked to watch."
+          }
         >
-          <div className="rounded-2xl border border-dashed border-[var(--border-strong)] px-4 py-8 text-center">
-            <p className="text-muted text-sm">Nothing saved yet.</p>
-            <Link to="/search" className="btn btn-glass mt-3 !px-4 !text-xs">
-              Browse gift cards
-              <Icon name="arrowRight" className="h-3.5 w-3.5" />
-            </Link>
-          </div>
+          {savedBrands.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[var(--border-strong)] px-4 py-8 text-center">
+              <p className="text-muted text-sm">Nothing saved yet.</p>
+              <p className="text-faint mx-auto mt-1 max-w-xs text-xs leading-relaxed">
+                Tap the bookmark on any card to keep an eye on it.
+              </p>
+              <Link to="/search" className="btn btn-glass mt-3 !px-4 !text-xs">
+                Browse gift cards
+                <Icon name="arrowRight" className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          ) : (
+            <>
+              <ul className="grid gap-2">
+                {savedBrands.map((b) => {
+                  const top = bestDiscount(b);
+                  return (
+                    <li key={b.id} className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2.5">
+                      <BrandMark brand={b} className="h-10 w-10" textClassName="text-xs" />
+                      <Link to={`/gift-card/${b.id}`} className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-bold">{b.name}</span>
+                        <span className="text-faint block text-xs">
+                          {b.offers.length} {b.offers.length === 1 ? 'seller' : 'sellers'}
+                          {top > 0 ? ` · up to ${formatPct(top)}% off` : ' · at face value'}
+                        </span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => remove(b.id)}
+                        aria-label={`Remove ${b.name} from saved`}
+                        className="text-faint grid h-8 w-8 shrink-0 place-items-center rounded-xl transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
+                      >
+                        <Icon name="close" className="h-4 w-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <button
+                type="button"
+                onClick={clear}
+                className="text-faint mt-3 text-xs font-semibold transition-colors hover:text-[var(--text)]"
+              >
+                Remove all
+              </button>
+            </>
+          )}
         </Section>
 
         {/* ------------------------------- Messages -------------------------- */}

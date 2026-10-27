@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Icon } from './Icon';
 import { BrandMark } from './BrandMark';
 import { bestDiscount, formatPct, getPlatform, rankedOffers } from '../services/catalog';
+import { useSaved } from '../hooks/useApp';
 import type { Brand } from '../types';
 
 /**
@@ -13,6 +14,8 @@ import type { Brand } from '../types';
 export function BrandCard({ brand, index = 0 }: { brand: Brand; index?: number }) {
   const offers = rankedOffers(brand);
   const top = bestDiscount(brand);
+  const { isSaved, toggle } = useSaved();
+  const saved = isSaved(brand.id);
 
   return (
     <motion.div
@@ -38,11 +41,40 @@ export function BrandCard({ brand, index = 0 }: { brand: Brand; index?: number }
                 {brand.tagline}
               </p>
             </div>
-            {top > 0 && (
-              <span className="chip chip-good shrink-0 !px-2.5 !py-1 !text-[0.7rem]">
-                −{formatPct(top)}%
-              </span>
-            )}
+            <span className="flex shrink-0 items-center gap-1.5">
+              {top > 0 && (
+                <span className="chip chip-good !px-2.5 !py-1 !text-[0.7rem]">
+                  −{formatPct(top)}%
+                </span>
+              )}
+              {/*
+                The whole card is a link, so the bookmark has to stop the click
+                from navigating — otherwise saving would also open the brand.
+              */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggle(brand.id);
+                }}
+                aria-pressed={saved}
+                aria-label={saved ? `Remove ${brand.name} from saved` : `Save ${brand.name}`}
+                title={saved ? 'Saved — click to remove' : 'Save this card'}
+                className={`grid h-8 w-8 place-items-center rounded-xl border transition-colors ${
+                  saved
+                    ? 'border-transparent bg-[var(--surface-hover)] text-[var(--text)]'
+                    : 'text-muted border-[var(--border)] hover:bg-[var(--surface)] hover:text-[var(--text)]'
+                }`}
+              >
+                <Icon
+                  name="bookmark"
+                  className="h-4 w-4"
+                  strokeWidth={saved ? 2.2 : 1.7}
+                  fill={saved ? 'currentColor' : 'none'}
+                />
+              </button>
+            </span>
           </div>
         </div>
 

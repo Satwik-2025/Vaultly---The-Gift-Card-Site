@@ -2,6 +2,7 @@ import { useContext } from 'react';
 import { ThemeContext } from '../context/ThemeContext';
 import { SearchDockContext } from '../context/SearchDock';
 import { AuthContext } from '../context/AuthContext';
+import { SavedContext } from '../context/SavedContext';
 
 export function useTheme() {
   const ctx = useContext(ThemeContext);
@@ -18,5 +19,11 @@ export function useSearchDock() {
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  return ctx;
+}
+
+export function useSaved() {
+  const ctx = useContext(SavedContext);
+  if (!ctx) throw new Error('useSaved must be used inside <SavedProvider>');
   return ctx;
 }

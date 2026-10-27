@@ -67,7 +67,7 @@
   --faint: rgb(15 18 32 / 0.44);
 
   --shadow-glass: 0 20px 45px -22px rgb(23 27 60 / 0.35);
-  --popover-bg: rgb(255 255 255 / 0.98);
+  --popover-bg: rgb(255 255 255 / 0.9);
   --aurora-alpha: 0.28;
 
   color-scheme: light;
@@ -169,7 +169,7 @@
   --bg: #f6f2ea;
   --bg-elevated: #fffdf8;
   --ring-focus: rgb(178 84 47 / 0.5);
-  --popover-bg: rgb(255 253 248 / 0.98);
+  --popover-bg: rgb(255 253 248 / 0.92);
 
   --aurora-1: #cf7b50;
   --aurora-2: #d8a657;
@@ -188,7 +188,7 @@
   --bg: #f4f4f5;
   --bg-elevated: #ffffff;
   --ring-focus: rgb(63 63 70 / 0.45);
-  --popover-bg: rgb(255 255 255 / 0.98);
+  --popover-bg: rgb(255 255 255 / 0.92);
 
   --aurora-1: #71717a;
   --aurora-2: #a1a1aa;
@@ -310,8 +310,22 @@
       0 28px 70px -18px rgb(0 0 0 / 0.7),
       0 0 0 1px rgb(255 255 255 / 0.04);
   }
+  /*
+    On a dark page the heavy drop shadow is what lifts a menu off the content.
+    On a light one that shadow barely registers, so the panel read as a flat
+    patch welded to the page. Light gets its separation from a crisp hairline
+    plus a tight contact shadow instead, and a slightly lower opacity so the
+    backdrop blur is actually visible behind it rather than wasted under an
+    opaque fill.
+  */
   .light .popover {
-    box-shadow: 0 24px 60px -20px rgb(23 27 60 / 0.4);
+    border-color: rgb(16 19 40 / 0.14);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    box-shadow:
+      0 0 0 1px rgb(16 19 40 / 0.05),
+      0 2px 8px -2px rgb(23 27 60 / 0.16),
+      0 28px 64px -20px rgb(23 27 60 / 0.42);
   }
 
   /* Hairline highlight along the top edge — the detail that sells the glass.

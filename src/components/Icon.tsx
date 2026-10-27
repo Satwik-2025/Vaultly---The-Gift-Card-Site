@@ -2,6 +2,8 @@ interface IconProps {
   name: keyof typeof PATHS;
   className?: string;
   strokeWidth?: number;
+  /** Closed-path icons (the bookmark) use this to show an active state. */
+  fill?: string;
 }
 
 /** Single-source inline icon set — keeps the bundle asset-free and themeable. */
@@ -29,13 +31,15 @@ const PATHS = {
   shield: 'M12 3l7.5 3v5.5c0 4.4-3.1 8-7.5 9.5-4.4-1.5-7.5-5.1-7.5-9.5V6L12 3Z',
   filter: 'M4 6h16M7 12h10M10 18h4',
   refresh: 'M20 11a8 8 0 1 0-.6 4M20 5v6h-6',
+  // Drawn as a closed path so it can be filled to mark a saved card.
+  bookmark: 'M6 4.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V5.5a1 1 0 0 1 1-1Z',
 } as const;
 
-export function Icon({ name, className = 'w-5 h-5', strokeWidth = 1.7 }: IconProps) {
+export function Icon({ name, className = 'w-5 h-5', strokeWidth = 1.7, fill = 'none' }: IconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
-      fill="none"
+      fill={fill}
       stroke="currentColor"
       strokeWidth={strokeWidth}
       strokeLinecap="round"

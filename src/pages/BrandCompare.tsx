@@ -19,6 +19,7 @@ import {
 } from '../services/catalog';
 import type { Brand, PlatformId } from '../types';
 import type { RefreshChanges } from '../services/catalog';
+import { useSaved } from '../hooks/useApp';
 
 const termsId = (platformId: PlatformId) => `terms-${platformId}`;
 
@@ -39,6 +40,7 @@ export function BrandCompare() {
   const [brand, setBrand] = useState<Brand | undefined>(() =>
     brandId ? getBrand(brandId) : undefined,
   );
+  const { isSaved, toggle: toggleSaved } = useSaved();
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
   /** What the last live check changed, so the page can explain itself. */
@@ -353,6 +355,23 @@ export function BrandCompare() {
         {brand.cashKaro && <CashKaroCard cashKaro={brand.cashKaro} brandName={brand.name} />}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          {/* Same bookmark as the search cards, so saving works wherever you
+              happen to be looking at the brand. */}
+          <button
+            type="button"
+            onClick={() => toggleSaved(brand.id)}
+            aria-pressed={isSaved(brand.id)}
+            className="btn btn-glass !px-3 !text-xs sm:!px-5 sm:!text-sm"
+          >
+            <Icon
+              name="bookmark"
+              className="h-4 w-4"
+              strokeWidth={isSaved(brand.id) ? 2.2 : 1.7}
+              fill={isSaved(brand.id) ? 'currentColor' : 'none'}
+            />
+            {isSaved(brand.id) ? 'Saved' : 'Save card'}
+          </button>
+
           <button
             type="button"
             onClick={() => scrollTo('terms')}

@@ -5,6 +5,7 @@ import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
 import { SearchDockProvider } from './context/SearchDock';
 import { AuthProvider } from './context/AuthContext';
+import { SavedProvider } from './context/SavedContext';
 import { loadCatalog } from './services/catalog';
 import './index.css';
 
@@ -20,11 +21,13 @@ loadCatalog()
       <StrictMode>
         <ThemeProvider>
           <AuthProvider>
+            <SavedProvider>
             <SearchDockProvider>
               <BrowserRouter>
                 <App />
               </BrowserRouter>
             </SearchDockProvider>
+            </SavedProvider>
           </AuthProvider>
         </ThemeProvider>
       </StrictMode>,

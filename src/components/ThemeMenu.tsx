@@ -5,12 +5,15 @@ import { useTheme } from '../hooks/useApp';
 import type { Theme } from '../themes';
 
 /**
- * The theme control: a button that still does the quick dark/light flip on
- * click, with the full palette list revealed on hover.
+ * The theme control: hovering reveals the palette list, clicking opens and
+ * closes it.
+ *
+ * Clicking used to flip dark/light, which fought the hover menu — you reached
+ * for a palette, clicked, and the theme changed under you instead of the panel
+ * closing. Picking a palette is the only thing that changes the theme now.
  *
  * Hover alone would strand keyboard and touch users, so the same panel opens on
- * focus and on tap. On a touch device the first tap opens the list rather than
- * flipping the theme, because there is no hover to reveal it.
+ * focus and on tap.
  */
 
 /** A miniature of the page: background, aurora wash, and a pill of accent. */
@@ -38,7 +41,7 @@ function Swatch({ theme, active }: { theme: Theme; active: boolean }) {
 }
 
 export function ThemeMenu() {
-  const { theme, themes, select, toggle } = useTheme();
+  const { theme, themes, select } = useTheme();
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
@@ -70,9 +73,6 @@ export function ThemeMenu() {
     };
   }, [open]);
 
-  const coarse =
-    typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
-
   return (
     <div
       ref={wrap}
@@ -83,8 +83,8 @@ export function ThemeMenu() {
     >
       <button
         type="button"
-        onClick={() => (coarse ? setOpen((o) => !o) : toggle())}
-        aria-label={`Theme: ${theme.name}. ${coarse ? 'Show themes' : 'Switch light or dark'}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-label={`Theme: ${theme.name}. ${open ? 'Hide themes' : 'Show themes'}`}
         aria-expanded={open}
         aria-haspopup="menu"
         className="btn btn-glass h-10 w-10 !p-0"
