@@ -49,7 +49,10 @@ export function Navbar() {
         >
           <Link to="/" className="shrink-0 pl-1" aria-label="Vaultly home">
             {/* Wordmark hides below `sm`, where the bar has no room for it. */}
-            <Logo className="[&>span:last-child]:hidden sm:[&>span:last-child]:flex" />
+            <Logo
+              showTagline
+              className="[&>span:last-child]:hidden sm:[&>span:last-child]:flex"
+            />
           </Link>
 
           {/* The search bar lives here only once docked. While the hero owns it,
