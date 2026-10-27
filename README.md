@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎁 Vaultly
+<img src="docs/vaultly-logo.png" alt="Vaultly — unlock more value" width="420">
 
 ### Never overpay for a gift card again.
 

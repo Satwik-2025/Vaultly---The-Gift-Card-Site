@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Icon } from './Icon';
+import { Logo } from './Logo';
 import { generatedAt, listPlatforms } from '../services/catalog';
 
 export function Footer() {
@@ -10,10 +10,7 @@ export function Footer() {
           <div className="grid gap-8 p-6 md:grid-cols-[1.3fr_1fr_1fr] md:p-9">
             <div>
               <div className="flex items-center gap-2.5">
-                <span className="from-brand-500 to-mint-500 grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br">
-                  <Icon name="tag" className="h-[18px] w-[18px] text-white" strokeWidth={2} />
-                </span>
-                <span className="font-display text-lg font-extrabold">Vaultly</span>
+                <Logo showTagline />
               </div>
               <p className="text-muted mt-3 max-w-sm text-sm leading-relaxed">
                 We compare gift card prices and put the terms that actually matter — stacking,

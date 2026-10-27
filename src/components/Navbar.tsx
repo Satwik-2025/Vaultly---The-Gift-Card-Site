@@ -6,6 +6,7 @@ import { SearchBar } from './SearchBar';
 import { useSearchDock } from '../hooks/useApp';
 import { ThemeMenu } from './ThemeMenu';
 import { ProfileMenu } from './ProfileMenu';
+import { Logo } from './Logo';
 import { SEARCH_DOCK_TRANSITION, SEARCH_LAYOUT_ID } from '../context/SearchDock';
 
 export function Navbar() {
@@ -46,13 +47,9 @@ export function Navbar() {
             scrolled ? 'shadow-2xl' : ''
           }`}
         >
-          <Link to="/" className="flex shrink-0 items-center gap-2.5 pl-1" aria-label="Vaultly home">
-            <span className="from-brand-500 to-mint-500 grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br shadow-lg">
-              <Icon name="tag" className="h-[18px] w-[18px] text-white" strokeWidth={2} />
-            </span>
-            <span className="font-display hidden text-lg font-extrabold tracking-tight sm:block">
-              Vaultly
-            </span>
+          <Link to="/" className="shrink-0 pl-1" aria-label="Vaultly home">
+            {/* Wordmark hides below `sm`, where the bar has no room for it. */}
+            <Logo className="[&>span:last-child]:hidden sm:[&>span:last-child]:flex" />
           </Link>
 
           {/* The search bar lives here only once docked. While the hero owns it,
