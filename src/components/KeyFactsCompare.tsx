@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Icon, type IconName } from './Icon';
 import { formatPct, getPlatform } from '../services/catalog';
 import { KEY_FACT_LABELS, KEY_FACT_ORDER, type FactStatus, type Offer } from '../types';
+import { ink } from '../lib/color';
 
 const STATUS_CLASS: Record<FactStatus, string> = {
   good: 'chip-good',
@@ -47,7 +48,7 @@ export function KeyFactsCompare({ offers }: { offers: Offer[] }) {
               </span>
               <span
                 className="shrink-0 text-sm font-extrabold tabular-nums"
-                style={{ color: platform.accent }}
+                style={{ color: ink(platform.accent) }}
               >
                 {offer.headlineDiscountPct > 0 ? `−${formatPct(offer.headlineDiscountPct)}%` : '—'}
               </span>
@@ -64,7 +65,7 @@ export function KeyFactsCompare({ offers }: { offers: Offer[] }) {
                   <div className="flex items-center gap-2">
                     <span
                       className="grid h-6 w-6 shrink-0 place-items-center rounded-md"
-                      style={{ background: `${STATUS_DOT[f.status]}1f`, color: STATUS_DOT[f.status] }}
+                      style={{ background: `${STATUS_DOT[f.status]}1f`, color: ink(STATUS_DOT[f.status], 70) }}
                     >
                       <Icon name={meta.icon as IconName} className="h-3.5 w-3.5" strokeWidth={2} />
                     </span>

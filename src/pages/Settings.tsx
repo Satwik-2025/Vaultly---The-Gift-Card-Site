@@ -271,7 +271,7 @@ export function Settings() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   readOnly={!editing}
-                  className={`field ${editing ? '' : 'cursor-default opacity-70'}`}
+                  className="input"
                   autoComplete="name"
                 />
               </label>
@@ -284,14 +284,14 @@ export function Settings() {
                   onChange={(e) => setAge(e.target.value.replace(/\D/g, '').slice(0, 3))}
                   readOnly={!editing}
                   inputMode="numeric"
-                  className={`field ${editing ? '' : 'cursor-default opacity-70'}`}
+                  className="input"
                 />
               </label>
               <label className="grid gap-1.5">
                 <span className="text-faint text-[0.65rem] font-bold tracking-[0.14em] uppercase">
                   Email
                 </span>
-                <input value={user.email} readOnly className="field cursor-default opacity-50" />
+                <input value={user.email} readOnly className="input" />
                 <span className="text-faint text-xs">
                   Your email identifies the account and can't be changed.
                 </span>
@@ -330,7 +330,7 @@ export function Settings() {
                 )}
 
                 {justSaved && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6ee7b7]">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ok)]">
                     <Icon name="check" className="h-3.5 w-3.5" />
                     Saved
                   </span>

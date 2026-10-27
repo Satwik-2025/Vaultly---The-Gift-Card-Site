@@ -48,7 +48,7 @@ export function NewCardsBanner({ onCatalogUpdated }: { onCatalogUpdated: () => v
           className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-md md:inset-x-auto md:right-5 md:bottom-5"
         >
           <div className="popover flex items-start gap-3 rounded-2xl p-3.5">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#4ad6a8]/15 text-[#4ad6a8]">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--ok)]/15 text-[var(--ok)]">
               <Icon name="refresh" className="h-4 w-4" strokeWidth={2} />
             </span>
 
@@ -57,7 +57,7 @@ export function NewCardsBanner({ onCatalogUpdated }: { onCatalogUpdated: () => v
 
               {found.added > 0 && (
                 <p className="text-muted text-xs leading-relaxed">
-                  <span className="font-bold text-[#6ee7b7]">
+                  <span className="font-bold text-[var(--ok)]">
                     +{found.added} newly listed
                   </span>{' '}
                   · {list(found.brands.map((b) => b.name))}
@@ -66,7 +66,7 @@ export function NewCardsBanner({ onCatalogUpdated }: { onCatalogUpdated: () => v
 
               {found.removed > 0 && (
                 <p className="text-muted text-xs leading-relaxed">
-                  <span className="font-bold text-[#ff9aa8]">
+                  <span className="font-bold text-[var(--bad)]">
                     −{found.removed} no longer sold
                   </span>{' '}
                   · {list(found.removedBrands.map((b) => b.name))}

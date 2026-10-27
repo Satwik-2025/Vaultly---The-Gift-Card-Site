@@ -80,7 +80,7 @@ export function Footer() {
                 minute: '2-digit',
               })}
             </p>
-            <p>Always confirm the final price and terms on the seller's own page before paying.</p>
+            <p>Always confirm the final price and terms on the seller's own page before buying.</p>
           </div>
         </div>
       </div>

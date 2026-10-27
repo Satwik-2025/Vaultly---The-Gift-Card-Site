@@ -35,8 +35,25 @@
   --border-strong: rgb(255 255 255 / 0.20);
 
   --text: #f3f3f8;
-  --muted: rgb(243 243 248 / 0.62);
-  --faint: rgb(243 243 248 / 0.40);
+  /* Secondary text was 0.62 / 0.40, which held up on the near-black base but
+     sank into the brighter aurora patches further down the page — most of all
+     on Ocean, whose blue wash is the lightest of the dark themes. */
+  --muted: rgb(243 243 248 / 0.76);
+  --faint: rgb(243 243 248 / 0.58);
+
+  /*
+    Status inks. These used to be hardcoded hexes picked for dark themes —
+    mint, pink and amber that vanish on white — so on the light themes things
+    like "Amazon read 16 min ago" were pale yellow on near-white. Each mode now
+    supplies its own.
+  */
+  --ok: #6ee7b7;
+  --bad: #ff9aa8;
+  --warn: #ffd479;
+
+  /* Text fields need a visible box of their own. */
+  --input-bg: rgb(255 255 255 / 0.06);
+  --input-border: rgb(255 255 255 / 0.16);
 
   --shadow-glass: 0 24px 60px -20px rgb(0 0 0 / 0.75);
   --ring-focus: rgb(139 139 255 / 0.65);
@@ -46,7 +63,9 @@
   --aurora-1: #6d5efc;
   --aurora-2: #e0245e;
   --aurora-3: #22bb8e;
-  --aurora-alpha: 0.5;
+  /* Was 0.5. The ambient wash is decoration; at half strength it brightened
+     whole sections enough to swallow secondary text. */
+  --aurora-alpha: 0.34;
 
   color-scheme: dark;
 }
@@ -69,12 +88,19 @@
   --border-strong: rgb(16 19 40 / 0.20);
 
   --text: #0f1220;
-  --muted: rgb(15 18 32 / 0.64);
-  --faint: rgb(15 18 32 / 0.44);
+  --muted: rgb(15 18 32 / 0.76);
+  --faint: rgb(15 18 32 / 0.58);
+
+  --ok: #047857;
+  --bad: #be123c;
+  --warn: #a16207;
+
+  --input-bg: #ffffff;
+  --input-border: rgb(16 19 40 / 0.18);
 
   --shadow-glass: 0 20px 45px -22px rgb(23 27 60 / 0.35);
   --popover-bg: rgb(255 255 255 / 0.9);
-  --aurora-alpha: 0.28;
+  --aurora-alpha: 0.2;
 
   color-scheme: light;
 }
@@ -182,7 +208,7 @@
   --aurora-1: #cf7b50;
   --aurora-2: #d8a657;
   --aurora-3: #7fa65a;
-  --aurora-alpha: 0.26;
+  --aurora-alpha: 0.18;
 }
 
 [data-theme='mono'] {
@@ -202,7 +228,7 @@
   --aurora-2: #a1a1aa;
   --aurora-3: #52525b;
   /* Greyscale aurora would read as dirt rather than light — keep it faint. */
-  --aurora-alpha: 0.14;
+  --aurora-alpha: 0.1;
 }
 
 @layer base {
@@ -476,6 +502,42 @@
     color: var(--text);
     font-size: 1rem;
   }
+  /*
+    A free-standing text input. `.field` above is deliberately borderless and
+    transparent because it lives inside the search bar's own frame; used on its
+    own (the sign-in form) it rendered as nothing at all, and you couldn't see
+    where to type.
+  */
+  .input {
+    width: 100%;
+    height: 3rem;
+    padding: 0 1rem;
+    border-radius: 0.9rem;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text);
+    font-size: 0.95rem;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background-color 0.2s ease;
+  }
+  .input::placeholder {
+    color: var(--faint);
+  }
+  .input:hover:not(:focus):not([readonly]) {
+    border-color: var(--border-strong);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--color-brand-400);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-brand-500) 22%, transparent);
+  }
+  .input[readonly] {
+    cursor: default;
+    opacity: 0.65;
+  }
+
   .field::placeholder {
     color: var(--faint);
   }

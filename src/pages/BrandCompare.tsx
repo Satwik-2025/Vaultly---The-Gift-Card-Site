@@ -251,20 +251,20 @@ export function BrandCompare() {
           <p className="flex items-center gap-2.5 text-sm">
             <span className="relative flex h-2.5 w-2.5 shrink-0">
               {checking && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#6ee7b7] opacity-70" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--ok)] opacity-70" />
               )}
               <span
                 className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
                   checkError
-                    ? 'bg-[#ff9aa8]'
+                    ? 'bg-[var(--bad)]'
                     : lagging.length || stale
-                      ? 'bg-[#ffd479]'
-                      : 'bg-[#6ee7b7]'
+                      ? 'bg-[var(--warn)]'
+                      : 'bg-[var(--ok)]'
                 }`}
               />
             </span>
             {checkError ? (
-              <span className="font-semibold text-[#ff9aa8]">{checkError}</span>
+              <span className="font-semibold text-[var(--bad)]">{checkError}</span>
             ) : checking ? (
               <span className="font-semibold">Re-reading every site…</span>
             ) : (
@@ -288,7 +288,7 @@ export function BrandCompare() {
                     <span className="font-semibold">
                       Live from {fresh.length} {fresh.length === 1 ? 'site' : 'sites'}
                     </span>
-                    <span className="font-semibold text-[#ffd479]">
+                    <span className="font-semibold text-[var(--warn)]">
                       · {lagging.map((s) => `${s.name} read ${timeAgo(s.at)}`).join(', ')}
                     </span>
                   </>
@@ -323,19 +323,19 @@ export function BrandCompare() {
             className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-xs"
           >
             {changes.added.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 font-semibold text-[#6ee7b7]">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--ok)]">
                 <Icon name="plus" className="h-3.5 w-3.5" />
                 Now also on {changes.added.map((id) => getPlatform(id).name).join(', ')}
               </span>
             )}
             {changes.removed.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 font-semibold text-[#ff9aa8]">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--bad)]">
                 <Icon name="minus" className="h-3.5 w-3.5" />
                 No longer sold by {changes.removed.map((id) => getPlatform(id).name).join(', ')}
               </span>
             )}
             {changes.unstocked.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 font-semibold text-[#ffd479]">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--warn)]">
                 <Icon name="clock" className="h-3.5 w-3.5" />
                 Sold out on {changes.unstocked.map((id) => getPlatform(id).name).join(', ')} — still listed, nothing to buy today
               </span>

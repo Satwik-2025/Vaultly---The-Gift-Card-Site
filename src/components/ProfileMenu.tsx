@@ -152,7 +152,7 @@ export function ProfileMenu() {
                     setOpen(false);
                     navigate('/');
                   }}
-                  className="mt-0.5 flex items-center gap-2.5 rounded-xl border-t border-[var(--border)] px-2 py-2 pt-2.5 text-left text-sm font-semibold text-[#ff9aa8] transition-colors hover:bg-[var(--surface-hover)]"
+                  className="mt-0.5 flex items-center gap-2.5 rounded-xl border-t border-[var(--border)] px-2 py-2 pt-2.5 text-left text-sm font-semibold text-[var(--bad)] transition-colors hover:bg-[var(--surface-hover)]"
                 >
                   <Icon name="close" className="h-4 w-4 shrink-0" />
                   Sign out

@@ -33,6 +33,9 @@ const PATHS = {
   refresh: 'M20 11a8 8 0 1 0-.6 4M20 5v6h-6',
   // Drawn as a closed path so it can be filled to mark a saved card.
   bookmark: 'M6 4.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V5.5a1 1 0 0 1 1-1Z',
+  eye: 'M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z',
+  eyeOff:
+    'M3.5 3.5l17 17M10.4 5.7A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.9 3.7M6.5 6.9C4 8.6 2.5 12 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.3-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2',
 } as const;
 
 export function Icon({ name, className = 'w-5 h-5', strokeWidth = 1.7, fill = 'none' }: IconProps) {

@@ -5,6 +5,7 @@ import { BrandMark } from './BrandMark';
 import { bestDiscount, formatPct, getPlatform, rankedOffers } from '../services/catalog';
 import { useSaved } from '../hooks/useApp';
 import type { Brand } from '../types';
+import { ink } from '../lib/color';
 
 /**
  * Search-result card. Mirrors the sketch: brand on top, and directly beneath it
@@ -97,7 +98,7 @@ export function BrandCard({ brand, index = 0 }: { brand: Brand; index?: number }
                 <span className="flex-1 truncate text-sm font-medium">{platform.name}</span>
                 <span
                   className={`text-sm font-bold tabular-nums ${isBest && top > 0 ? '' : 'text-muted'}`}
-                  style={isBest && top > 0 ? { color: platform.accent } : undefined}
+                  style={isBest && top > 0 ? { color: ink(platform.accent) } : undefined}
                 >
                   {offer.headlineDiscountPct > 0
                     ? `−${formatPct(offer.headlineDiscountPct)}%`

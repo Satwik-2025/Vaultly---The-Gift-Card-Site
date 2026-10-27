@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Icon, type IconName } from './Icon';
 import { getPlatform } from '../services/catalog';
 import { KEY_FACT_LABELS, KEY_FACT_ORDER, type FactStatus, type Offer } from '../types';
+import { ink } from '../lib/color';
 
 const STATUS_CLASS: Record<FactStatus, string> = {
   good: 'chip-good',
@@ -71,7 +72,7 @@ export function TermsSection({ offer, id }: { offer: Offer; id: string }) {
               <div className="flex items-start gap-2.5">
                 <span
                   className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
-                  style={{ background: `${platform.accent}1f`, color: platform.accent }}
+                  style={{ background: `${platform.accent}1f`, color: ink(platform.accent) }}
                 >
                   <Icon name={meta.icon as IconName} className="h-4 w-4" strokeWidth={2} />
                 </span>

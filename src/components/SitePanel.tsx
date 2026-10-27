@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Icon } from './Icon';
 import { formatINR, formatPct, getPlatform, payable, savings } from '../services/catalog';
 import type { Brand, Denomination, Offer } from '../types';
+import { ink } from '../lib/color';
 
 /** Stable identity for a denomination. Amount alone is not unique. */
 const denomKey = (d: Denomination): string => `${d.value}|${d.label ?? ''}`;
@@ -169,7 +170,7 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
             </p>
             <p
               className="font-display text-3xl leading-none font-extrabold"
-              style={{ color: platform.accent }}
+              style={{ color: ink(platform.accent) }}
             >
               {offer.headlineDiscountPct > 0 ? (
                 <>
@@ -245,7 +246,7 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
 
             <p
               className={`mt-1.5 text-[0.7rem] font-semibold ${
-                customError && hasTyped ? 'text-[#ff9aa8]' : 'text-faint'
+                customError && hasTyped ? 'text-[var(--bad)]' : 'text-faint'
               }`}
             >
               {hasTyped && customError
@@ -315,7 +316,7 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
                     ) : (
                       <span
                         className="text-muted block text-[0.68rem] font-semibold tabular-nums"
-                        style={active ? { color: platform.accent } : undefined}
+                        style={active ? { color: ink(platform.accent) } : undefined}
                       >
                         {d.discountPct > 0 ? `−${formatPct(d.discountPct)}%` : '—'}
                       </span>
@@ -368,7 +369,7 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
         </div>
         <div className="mt-1.5 flex items-center justify-between text-sm">
           <span className="text-muted">Discount ({formatPct(discountPct)}%)</span>
-          <span className="font-semibold tabular-nums text-[#4ad6a8]">−{formatINR(save)}</span>
+          <span className="font-semibold tabular-nums text-[var(--ok)]">−{formatINR(save)}</span>
         </div>
         <div className="my-3 h-px bg-[var(--border)]" />
         <div className="flex items-end justify-between">

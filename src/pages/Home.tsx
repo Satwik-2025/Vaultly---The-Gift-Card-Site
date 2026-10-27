@@ -72,7 +72,7 @@ export function Home() {
             transition={{ duration: 0.5 }}
             className="chip mx-auto !px-3.5 !py-1.5"
           >
-            <Icon name="spark" className="h-3.5 w-3.5 text-[#4ad6a8]" strokeWidth={2} />
+            <Icon name="spark" className="h-3.5 w-3.5 text-[var(--ok)]" strokeWidth={2} />
             {listBrands().length} brands · {totalOffers} live offers · {platforms.length} sellers
           </motion.span>
 
@@ -178,7 +178,9 @@ export function Home() {
           <h2 className="text-center text-sm font-bold tracking-[0.16em] uppercase">
             <span className="text-faint">Comparing prices across</span>
           </h2>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {/* One seller per row on phones: two to a row left ~150px each, and a wide
+              wordmark like GyFTR's pushed the seller's name out of view. */}
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {platforms.map((p) => {
               return (
                 <a
