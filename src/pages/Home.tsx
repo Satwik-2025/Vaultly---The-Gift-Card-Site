@@ -103,15 +103,20 @@ export function Home() {
             className="mt-8"
           >
             {/* Reserves the bar's height so the page doesn't jump when it
-                docks into the navbar. */}
-            <div ref={heroSlotRef} className="mx-auto min-h-[3.9rem] max-w-2xl md:min-h-[4.25rem]">
+                docks into the navbar. Hidden on phones, where the navbar's
+                search icon opens a full-width sheet — two ways in on a screen
+                that small was one too many. */}
+            <div
+              ref={heroSlotRef}
+              className="mx-auto hidden min-h-[3.9rem] max-w-2xl sm:block md:min-h-[4.25rem]"
+            >
               {!docked && (
                 <motion.div layoutId={SEARCH_LAYOUT_ID} transition={SEARCH_DOCK_TRANSITION}>
                   <SearchBar />
                 </motion.div>
               )}
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <div className="mt-0 flex flex-wrap items-center justify-center gap-2 sm:mt-4">
               <span className="text-faint text-xs">Popular:</span>
               {POPULAR.map((term) => (
                 <Link

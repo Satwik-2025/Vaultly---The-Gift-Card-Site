@@ -10,7 +10,7 @@ export function Footer() {
           <div className="grid gap-8 p-6 md:grid-cols-[1.3fr_1fr_1fr] md:p-9">
             <div>
               <div className="flex items-center gap-2.5">
-                <Logo showTagline />
+                <Logo showTagline size={30} />
               </div>
               <p className="text-muted mt-3 max-w-sm text-sm leading-relaxed">
                 We compare gift card prices and put the terms that actually matter — stacking,

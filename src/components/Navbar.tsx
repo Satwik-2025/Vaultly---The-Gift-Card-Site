@@ -51,6 +51,7 @@ export function Navbar() {
             {/* Wordmark hides below `sm`, where the bar has no room for it. */}
             <Logo
               showTagline
+              size={25}
               className="[&>span:last-child]:hidden sm:[&>span:last-child]:flex"
             />
           </Link>
@@ -85,7 +86,11 @@ export function Navbar() {
               <Icon name={mobileSearchOpen ? 'close' : 'search'} className="h-[18px] w-[18px]" />
             </button>
 
-            <ThemeMenu />
+            {/* Phones get search and profile only; themes live in
+                Settings › Appearance there. */}
+            <div className="hidden sm:block">
+              <ThemeMenu />
+            </div>
 
             <ProfileMenu />
           </div>

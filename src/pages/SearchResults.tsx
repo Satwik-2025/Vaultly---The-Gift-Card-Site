@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BrandCard } from '../components/BrandCard';
-import { SearchBar } from '../components/SearchBar';
 import { Icon } from '../components/Icon';
 import { listCategories, searchBrands } from '../services/catalog';
 import type { Category } from '../types';
@@ -41,10 +40,6 @@ export function SearchResults() {
         </p>
       </motion.div>
 
-      {/* Search is in the navbar on desktop; repeat it here for thumb reach on mobile */}
-      <div className="mt-6 md:hidden">
-        <SearchBar variant="hero" initialValue={query} />
-      </div>
 
       <div className="no-scrollbar mt-6 flex gap-2 overflow-x-auto pb-1">
         {(['All', ...categories] as const).map((c) => (
