@@ -163,13 +163,25 @@ export function BrandCompare() {
     best.lastChecked,
   );
 
-  // Split the sellers by whether they made the last sweep. A minute of slack:
-  // sellers in one sweep finish seconds apart.
-  const latestMs = new Date(latestCheck).getTime();
-  const laggingSellers = offers.filter(
-    (o) => latestMs - new Date(o.lastChecked).getTime() > 60_000,
+  /*
+    Everything this page reads live, as one list. CashKaro belongs here even
+    though it isn't a seller — it's re-read on the same sweep, it can fail
+    independently, and counting only the sellers understated what was checked.
+    Brands CashKaro doesn't list simply contribute nothing.
+  */
+  const liveSources = [
+    ...offers.map((o) => ({ name: getPlatform(o.platformId).name, at: o.lastChecked })),
+    ...(brand.cashKaro ? [{ name: 'CashKaro', at: brand.cashKaro.lastChecked }] : []),
+  ];
+
+  // Split by whether each made the last sweep. A minute of slack: sources in
+  // one sweep finish seconds apart.
+  const latestMs = Math.max(
+    new Date(latestCheck).getTime(),
+    ...liveSources.map((s) => new Date(s.at).getTime()),
   );
-  const freshSellers = offers.filter((o) => !laggingSellers.includes(o));
+  const lagging = liveSources.filter((s) => latestMs - new Date(s.at).getTime() > 60_000);
+  const fresh = liveSources.filter((s) => !lagging.includes(s));
 
   return (
     <div className="pt-8 pb-8 md:pt-12">
@@ -244,7 +256,7 @@ export function BrandCompare() {
                 className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
                   checkError
                     ? 'bg-[#ff9aa8]'
-                    : laggingSellers.length || stale
+                    : lagging.length || stale
                       ? 'bg-[#ffd479]'
                       : 'bg-[#6ee7b7]'
                 }`}
@@ -253,33 +265,30 @@ export function BrandCompare() {
             {checkError ? (
               <span className="font-semibold text-[#ff9aa8]">{checkError}</span>
             ) : checking ? (
-              <span className="font-semibold">Re-reading every seller…</span>
+              <span className="font-semibold">Re-reading every site…</span>
             ) : (
               <>
-                {laggingSellers.length === 0 ? (
+                {lagging.length === 0 ? (
                   <>
                     <span className="font-semibold">Prices read {timeAgo(readAt)}</span>
                     <span className="text-muted hidden sm:inline">
                       · live from{' '}
-                      {offers.length === 1 ? 'the seller' : `all ${offers.length} sellers`}
+                      {liveSources.length === 1 ? 'the one site' : `all ${liveSources.length} sites`}
                     </span>
                   </>
                 ) : (
                   <>
                     {/*
-                      Only the sellers that actually failed are old. Reporting
+                      Only the sources that actually failed are old. Reporting
                       the oldest reading for the whole page read as "66 d ago ·
                       live from all 3 sellers", which is both alarming and
-                      self-contradictory — so the laggard is named instead.
+                      self-contradictory — so the laggards are named instead.
                     */}
                     <span className="font-semibold">
-                      {freshSellers.length} of {offers.length} read {timeAgo(latestCheck)}
+                      Live from {fresh.length} {fresh.length === 1 ? 'site' : 'sites'}
                     </span>
                     <span className="font-semibold text-[#ffd479]">
-                      ·{' '}
-                      {laggingSellers
-                        .map((o) => `${getPlatform(o.platformId).name} ${timeAgo(o.lastChecked)}`)
-                        .join(', ')}
+                      · {lagging.map((s) => `${s.name} read ${timeAgo(s.at)}`).join(', ')}
                     </span>
                   </>
                 )}
