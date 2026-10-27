@@ -48,11 +48,13 @@ export function Navbar() {
           }`}
         >
           <Link to="/" className="shrink-0 pl-1" aria-label="Vaultly home">
-            {/* Wordmark hides below `sm`, where the bar has no room for it. */}
+            {/* The mark matches the 52px profile button beside it. With the
+                theme button gone on phones there's room for the wordmark
+                there too, one step smaller. */}
             <Logo
               showTagline
-              size={25}
-              className="[&>span:last-child]:hidden sm:[&>span:last-child]:flex"
+              className="text-[26px] sm:text-[30px]"
+              markClassName="h-[52px] w-[52px]"
             />
           </Link>
 

@@ -66,7 +66,7 @@ export function SearchResults() {
       </div>
 
       {results.length > 0 ? (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {results.map((brand, i) => (
             <BrandCard key={brand.id} brand={brand} index={i} />
           ))}

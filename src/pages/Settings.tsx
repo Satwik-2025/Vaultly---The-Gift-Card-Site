@@ -485,7 +485,7 @@ export function Settings() {
           title="Customer care"
           description="Questions about a card you bought go to the seller — they hold the order."
         >
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <a href="#contact" className="glass rounded-2xl p-4 transition-colors hover:bg-[var(--surface-hover)]">
               <p className="text-sm font-bold">Contact us</p>
               <p className="text-muted mt-1 text-xs leading-relaxed">

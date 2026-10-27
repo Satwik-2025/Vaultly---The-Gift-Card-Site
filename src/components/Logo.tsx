@@ -10,8 +10,8 @@
  * Layout follows the artwork: the tagline runs under the wordmark, justified
  * to exactly the width of "Vaultl", and the "y" sits outside that column so its
  * descender drops down beside "VALUE" rather than over it. Everything is sized
- * in em off one font size (`size`), so those proportions hold wherever the
- * lockup is placed.
+ * in em off one font size, so those proportions hold wherever the lockup is
+ * placed.
  *
  * The "ly" keeps the artwork's cyan (#18cce0, sampled from the PNG). The
  * original lives at docs/vaultly-logo.png for the README.
@@ -21,25 +21,33 @@ const CYAN = '#18cce0';
 
 export function Logo({
   className = '',
+  markClassName = 'h-[1.5em] w-[1.5em]',
   showTagline = false,
-  size = 24,
+  size,
 }: {
+  /** Set the wordmark size with a font-size class here for responsive sizes. */
   className?: string;
+  /**
+   * The mark's size. Defaults to scaling with the wordmark, but the header pins
+   * it in px so it matches the height of the buttons beside it.
+   */
+  markClassName?: string;
   showTagline?: boolean;
-  /** Wordmark size in px; the mark and tagline scale with it. */
+  /** Wordmark size in px; the tagline scales with it. */
   size?: number;
 }) {
   return (
     <span
       className={`inline-flex items-center gap-[0.34em] leading-none ${className}`}
-      style={{ fontSize: size }}
+      style={size ? { fontSize: size } : undefined}
     >
       <img
         src={`${import.meta.env.BASE_URL}brand/vaultly-mark.png`}
         alt=""
         width={263}
         height={263}
-        className="h-[1.5em] w-[1.5em] shrink-0 rounded-[0.32em] object-cover shadow-lg"
+        // Percentage radius keeps the corner proportional at any size.
+        className={`shrink-0 rounded-[22%] object-cover shadow-lg ${markClassName}`}
       />
 
       <span className="font-display inline-flex items-start font-extrabold tracking-tight">

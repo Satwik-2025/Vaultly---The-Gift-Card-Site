@@ -336,30 +336,14 @@
       0 28px 64px -20px rgb(23 27 60 / 0.42);
   }
 
-  /* Hairline highlight along the top edge — the detail that sells the glass.
-     Deliberately NOT `overflow: hidden`: the navbar uses this class, and
-     clipping it cut off the search suggestions dropdown. Components that need
-     clipping (cards with gradient headers) set `overflow-hidden` themselves. */
+  /* `.glass-sheen` used to paint a 1px highlight along the top edge. It was a
+     straight line, and it couldn't be clipped to the corners — clipping this
+     class cut off the navbar's search suggestions — so on every pill and
+     rounded card it ran straight on past where the curve began, reading as a
+     stray line above the bar. The surfaces are seamless without it. The class
+     stays as a positioning context so nothing that relied on it shifts. */
   .glass-sheen {
     position: relative;
-  }
-  .glass-sheen::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgb(255 255 255 / 0.55) 22%,
-      rgb(255 255 255 / 0.55) 78%,
-      transparent
-    );
-    opacity: 0.65;
-    pointer-events: none;
-  }
-  .light .glass-sheen::before {
-    opacity: 0.9;
   }
 
   .card-lift {
