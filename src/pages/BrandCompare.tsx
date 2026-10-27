@@ -20,6 +20,7 @@ import {
 import type { Brand, PlatformId } from '../types';
 import type { RefreshChanges } from '../services/catalog';
 import { useSaved } from '../hooks/useApp';
+import { scrollToId } from '../lib/scroll';
 
 const termsId = (platformId: PlatformId) => `terms-${platformId}`;
 
@@ -110,9 +111,7 @@ export function BrandCompare() {
 
   const offers = useMemo(() => (brand ? orderedOffers(brand) : []), [brand]);
 
-  const scrollTo = useCallback((elementId: string) => {
-    document.getElementById(elementId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+  const scrollTo = useCallback((elementId: string) => scrollToId(elementId), []);
 
   if (!brand) {
     return (

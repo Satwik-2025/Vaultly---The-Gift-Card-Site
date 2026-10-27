@@ -136,7 +136,7 @@ export function ProfileMenu() {
                   to={item.to ?? '/settings'}
                   role="menuitem"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold transition-colors hover:bg-[var(--surface)]"
+                  className="flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold transition-colors hover:bg-[var(--surface-hover)]"
                 >
                   <Icon name={item.icon} className="text-muted h-4 w-4 shrink-0" />
                   {item.label}
@@ -152,7 +152,7 @@ export function ProfileMenu() {
                     setOpen(false);
                     navigate('/');
                   }}
-                  className="mt-0.5 flex items-center gap-2.5 rounded-xl border-t border-[var(--border)] px-2 py-2 pt-2.5 text-left text-sm font-semibold text-[#ff9aa8] transition-colors hover:bg-[var(--surface)]"
+                  className="mt-0.5 flex items-center gap-2.5 rounded-xl border-t border-[var(--border)] px-2 py-2 pt-2.5 text-left text-sm font-semibold text-[#ff9aa8] transition-colors hover:bg-[var(--surface-hover)]"
                 >
                   <Icon name="close" className="h-4 w-4 shrink-0" />
                   Sign out

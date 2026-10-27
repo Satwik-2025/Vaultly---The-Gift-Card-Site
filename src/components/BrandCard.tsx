@@ -64,7 +64,7 @@ export function BrandCard({ brand, index = 0 }: { brand: Brand; index?: number }
                 className={`grid h-8 w-8 place-items-center rounded-xl border transition-colors ${
                   saved
                     ? 'border-transparent bg-[var(--surface-hover)] text-[var(--text)]'
-                    : 'text-muted border-[var(--border)] hover:bg-[var(--surface)] hover:text-[var(--text)]'
+                    : 'text-muted border-[var(--border)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]'
                 }`}
               >
                 <Icon
@@ -88,7 +88,7 @@ export function BrandCard({ brand, index = 0 }: { brand: Brand; index?: number }
             return (
               <div
                 key={offer.platformId}
-                className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors group-hover:bg-[var(--surface)]"
+                className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors group-hover:bg-[var(--surface-hover)]"
               >
                 <span
                   className="h-1.5 w-1.5 shrink-0 rounded-full"

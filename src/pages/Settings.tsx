@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Icon, type IconName } from './../components/Icon';
 import { useAuth, useSaved, useTheme } from '../hooks/useApp';
 import { BrandMark } from '../components/BrandMark';
 import { bestDiscount, formatPct, getBrand } from '../services/catalog';
 import type { Theme } from '../themes';
+import { scrollToId } from '../lib/scroll';
 
 /**
  * Settings, with Appearance first because it's the one people actually come
@@ -207,6 +208,23 @@ export function Settings() {
     setAge(String(user?.age ?? ''));
     setEditing(false);
   };
+
+  /*
+    Deep links from the account menu (/settings#saved) scroll to their section.
+    Keyed on `location.key` as well as the hash so picking the same entry twice
+    scrolls again — navigating to a URL you're already on doesn't change the
+    hash, and without this the second click appeared to do nothing.
+
+    Sections carry `scroll-mt-28`, so the sticky navbar doesn't cover the
+    heading it just scrolled to.
+  */
+  const { hash, key: navKey } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    // A frame's grace so the section has its final height before we measure.
+    const frame = requestAnimationFrame(() => scrollToId(hash.slice(1)));
+    return () => cancelAnimationFrame(frame);
+  }, [hash, navKey]);
 
   const setPref = (key: keyof Prefs) => (v: boolean) => setPrefs((p) => ({ ...p, [key]: v }));
 

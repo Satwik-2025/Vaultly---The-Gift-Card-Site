@@ -57,7 +57,13 @@
 
   --surface: rgb(255 255 255 / 0.72);
   --surface-strong: rgb(255 255 255 / 0.88);
-  --surface-hover: rgb(255 255 255 / 0.98);
+  /*
+    Hover has to move *away* from the page, and on a light page that means
+    darker. This used to be white at 0.98 — i.e. white on white — so every
+    hover across the site was invisible in light mode while looking fine in
+    dark, where the same token is a white wash over near-black.
+  */
+  --surface-hover: rgb(16 19 40 / 0.07);
 
   --border: rgb(16 19 40 / 0.10);
   --border-strong: rgb(16 19 40 / 0.20);
@@ -170,6 +176,8 @@
   --bg-elevated: #fffdf8;
   --ring-focus: rgb(178 84 47 / 0.5);
   --popover-bg: rgb(255 253 248 / 0.92);
+  /* Warm ink, so the hover wash doesn't read grey-blue on cream. */
+  --surface-hover: rgb(78 48 26 / 0.09);
 
   --aurora-1: #cf7b50;
   --aurora-2: #d8a657;

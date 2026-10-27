@@ -11,14 +11,17 @@ import { Settings } from './pages/Settings';
 import { SignIn } from './pages/SignIn';
 
 /**
- * Route changes should land at the top of the new page — but never fight an
- * in-page smooth scroll, so this only fires when the path itself changes.
+ * Route changes land at the top of the new page — except when the URL carries
+ * a hash, which means the visitor asked for a specific section.
  */
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   useEffect(() => {
+    // A deep link (/settings#saved) owns the scroll position — jumping to the
+    // top here would undo the smooth scroll the target page is about to do.
+    if (hash) return;
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-  }, [pathname]);
+  }, [pathname, hash]);
   return null;
 }
 

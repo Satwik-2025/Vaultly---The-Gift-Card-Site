@@ -136,7 +136,7 @@ export function ThemeMenu() {
                       setOpen(false);
                     }}
                     className={`flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-left text-sm font-semibold transition-colors ${
-                      active ? 'bg-[var(--surface-hover)]' : 'hover:bg-[var(--surface)]'
+                      active ? 'bg-[var(--surface-hover)]' : 'hover:bg-[var(--surface-hover)]'
                     }`}
                   >
                     <Swatch theme={t} active={active} />
