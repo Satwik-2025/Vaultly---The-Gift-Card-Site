@@ -47,14 +47,20 @@ export function Navbar() {
             scrolled ? 'shadow-2xl' : ''
           }`}
         >
-          <Link to="/" className="shrink-0 pl-1" aria-label="Vaultly home">
-            {/* The mark matches the 52px profile button beside it. With the
-                theme button gone on phones there's room for the wordmark
-                there too, one step smaller. */}
+          {/* `flex` rather than the default inline box: an inline link
+              reserves room for text descenders under its content, which sat
+              the mark 3px above the bar's centre. */}
+          <Link
+            to="/"
+            className="flex shrink-0 items-center pl-2 md:pl-3"
+            aria-label="Vaultly home"
+          >
+            {/* With the theme button gone on phones there's room for the
+                wordmark there too, one step smaller. */}
             <Logo
               showTagline
               className="text-[26px] sm:text-[30px]"
-              markClassName="h-[52px] w-[52px]"
+              markClassName="h-[44px] w-[44px]"
             />
           </Link>
 
