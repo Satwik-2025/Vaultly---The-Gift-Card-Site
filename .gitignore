@@ -15,3 +15,6 @@ dist
 
 # Partial writes from the catalog store (left behind if a write is interrupted)
 *.tmp
+
+# Dev-server accounts (on Vercel they live in Upstash Redis)
+.data/

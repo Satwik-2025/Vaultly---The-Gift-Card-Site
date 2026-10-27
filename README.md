@@ -109,11 +109,19 @@ The site deploys to **Vercel** straight from this repository — no server to ru
 
 Every push to `main` redeploys.
 
+**Accounts across devices** need one more click. In the Vercel project open **Storage → Create
+Database → Upstash for Redis** (the free plan is plenty), connect it to the project, and redeploy.
+That adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`, which `api/auth/[action].mjs` picks up. From
+then on an account and its saved cards follow you to any device you sign in on. Until it's
+connected the site still works, with sign-in kept in each browser. Accounts made that way move to
+the server automatically the next time their owner signs in on that browser.
+
 What runs where once deployed:
 
 | Feature | Deployed site |
 | --- | --- |
-| Browsing, search, compare, themes, accounts, saved cards | ✅ Static |
+| Browsing, search, compare, themes | ✅ Static |
+| Accounts and saved cards, on every device | ✅ `api/auth/[action].mjs` + Upstash Redis (scrypt-hashed passwords, HttpOnly session cookie) |
 | **Re-check prices now** — GyFTR, Woohoo, CashKaro | ✅ Live, via `api/refresh/[brandId].mjs` (~1–2 s) |
 | Re-check — Amazon | 🕒 Daily. Needs a real browser, too heavy for a function; the panel shows its age |
 | New and delisted cards | 🕒 Daily, via the scheduled scrape |

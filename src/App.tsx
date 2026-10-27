@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -10,16 +10,25 @@ import { BrandCompare } from './pages/BrandCompare';
 import { Settings } from './pages/Settings';
 import { SignIn } from './pages/SignIn';
 
+/** Routes that are one page with a switch, not separate destinations. */
+const AUTH_PATHS = ['/signin', '/signup'];
+
 /**
  * Route changes land at the top of the new page — except when the URL carries
  * a hash, which means the visitor asked for a specific section.
  */
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
+  const previous = useRef(pathname);
   useEffect(() => {
+    const from = previous.current;
+    previous.current = pathname;
     // A deep link (/settings#saved) owns the scroll position — jumping to the
     // top here would undo the smooth scroll the target page is about to do.
     if (hash) return;
+    // Flipping between sign in and create account changes the form in place;
+    // a jump to the top would be the one thing on screen that snaps.
+    if (from !== pathname && AUTH_PATHS.includes(from) && AUTH_PATHS.includes(pathname)) return;
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, [pathname, hash]);
   return null;

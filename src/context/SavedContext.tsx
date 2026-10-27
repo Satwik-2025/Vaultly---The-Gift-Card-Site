@@ -1,12 +1,16 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AuthContext, authApi } from './AuthContext';
 
 /**
  * Cards you've bookmarked to watch.
  *
- * Kept per browser rather than per account: saving is useful before you've
- * signed up, and losing the list on sign-out would be a nasty surprise. Stores
- * brand ids only, so a saved card always reflects today's prices rather than a
- * snapshot taken when you saved it.
+ * Signed in, the list belongs to the account and lives on the server, so the
+ * card you save on your phone is there on your laptop. Signed out, it's kept
+ * in this browser — saving is useful before you've signed up — and the first
+ * sign-in folds those cards into the account rather than dropping them.
+ *
+ * Stores brand ids only, so a saved card always reflects today's prices rather
+ * than a snapshot taken when you saved it.
  */
 interface SavedValue {
   saved: string[];
@@ -18,42 +22,147 @@ interface SavedValue {
 
 export const SavedContext = createContext<SavedValue | null>(null);
 
-const KEY = 'vaultly:saved';
+const GUEST_KEY = 'vaultly:saved';
+/** The signed-in account's list, cached so a reload doesn't flash it empty. */
+const ACCOUNT_KEY = 'vaultly:saved:account';
 
-const read = (): string[] => {
+/** Whose list is showing — an account's email, or null for this browser's. */
+interface SavedState {
+  owner: string | null;
+  list: string[];
+}
+
+const ids = (raw: unknown): string[] =>
+  Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : [];
+
+function readGuest(): string[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]');
-    return Array.isArray(raw) ? raw.filter((x) => typeof x === 'string') : [];
+    return ids(JSON.parse(localStorage.getItem(GUEST_KEY) ?? '[]'));
   } catch {
     return [];
   }
-};
+}
+
+function initialState(): SavedState {
+  try {
+    const user = JSON.parse(localStorage.getItem('vaultly:user') ?? 'null');
+    const cached = JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? 'null');
+    if (user?.email && cached?.owner === user.email) {
+      return { owner: user.email, list: ids(cached.list) };
+    }
+  } catch {
+    // Fall through to this browser's list.
+  }
+  return { owner: null, list: readGuest() };
+}
+
+type Change = { add?: string[]; remove?: string[]; clear?: true };
 
 export function SavedProvider({ children }: { children: React.ReactNode }) {
-  const [saved, setSaved] = useState<string[]>(read);
+  const auth = useContext(AuthContext);
+  if (!auth) throw new Error('SavedProvider must be inside <AuthProvider>');
+  const { user, cloud, loading, serverSaved } = auth;
+  const account = cloud && user ? user.email : null;
+  const [state, setState] = useState<SavedState>(initialState);
 
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(saved));
+      if (state.owner) localStorage.setItem(ACCOUNT_KEY, JSON.stringify(state));
+      else localStorage.setItem(GUEST_KEY, JSON.stringify(state.list));
     } catch {
       // Blocked site data — the list just won't survive a reload.
     }
-  }, [saved]);
+  }, [state]);
 
-  const toggle = useCallback((brandId: string) => {
-    setSaved((list) =>
-      // Newest first, so the settings list reads as a recent-activity feed.
-      list.includes(brandId) ? list.filter((id) => id !== brandId) : [brandId, ...list],
-    );
+  /*
+    Only the newest request's answer is applied. Toggle two cards quickly and
+    the replies can come back out of order; the last one sent is the one that
+    knows about both.
+  */
+  const latest = useRef(0);
+  const send = useCallback(async (owner: string, change: Change) => {
+    const mine = ++latest.current;
+    const result = await authApi('saved', 'PATCH', change);
+    if (result.ok && result.saved && mine === latest.current) {
+      const list = result.saved;
+      setState((s) => (s.owner === owner ? { owner, list } : s));
+    }
   }, []);
 
-  const remove = useCallback(
-    (brandId: string) => setSaved((list) => list.filter((id) => id !== brandId)),
-    [],
+  // Follow sign-in and sign-out.
+  useEffect(() => {
+    if (loading) return;
+    if (!account) {
+      // Signed out: this browser's list, and no copy of the account's left
+      // behind on what might be a shared device.
+      try {
+        localStorage.removeItem(ACCOUNT_KEY);
+      } catch {
+        // Nothing to remove if storage is blocked.
+      }
+      setState({ owner: null, list: readGuest() });
+      return;
+    }
+    if (!serverSaved) return;
+
+    const fromGuest = readGuest().filter((id) => !serverSaved.includes(id));
+    setState({ owner: account, list: [...fromGuest, ...serverSaved] });
+    if (fromGuest.length) {
+      // They're the account's now; leaving them here too would bring them
+      // back after signing out.
+      try {
+        localStorage.setItem(GUEST_KEY, '[]');
+      } catch {
+        // Nothing to clean up if storage is blocked.
+      }
+      void send(account, { add: fromGuest });
+    }
+  }, [loading, account, serverSaved, send]);
+
+  // Coming back to the tab picks up whatever you saved on another device.
+  useEffect(() => {
+    if (!account) return;
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible') return;
+      const mine = latest.current;
+      const result = await authApi('session', 'GET');
+      // Skip it if a change was sent meanwhile — that reply is fresher.
+      if (result.ok && result.user?.email === account && mine === latest.current) {
+        const list = result.saved ?? [];
+        setState((s) => (s.owner === account ? { owner: account, list } : s));
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [account]);
+
+  const toggle = useCallback(
+    (brandId: string) => {
+      const has = state.list.includes(brandId);
+      setState((s) => ({
+        ...s,
+        // Newest first, so the settings list reads as a recent-activity feed.
+        list: has ? s.list.filter((id) => id !== brandId) : [brandId, ...s.list],
+      }));
+      if (account) void send(account, has ? { remove: [brandId] } : { add: [brandId] });
+    },
+    [state.list, account, send],
   );
 
-  const clear = useCallback(() => setSaved([]), []);
+  const remove = useCallback(
+    (brandId: string) => {
+      setState((s) => ({ ...s, list: s.list.filter((id) => id !== brandId) }));
+      if (account) void send(account, { remove: [brandId] });
+    },
+    [account, send],
+  );
 
+  const clear = useCallback(() => {
+    setState((s) => ({ ...s, list: [] }));
+    if (account) void send(account, { clear: true });
+  }, [account, send]);
+
+  const saved = state.list;
   const value = useMemo<SavedValue>(
     () => ({ saved, isSaved: (id) => saved.includes(id), toggle, remove, clear }),
     [saved, toggle, remove, clear],

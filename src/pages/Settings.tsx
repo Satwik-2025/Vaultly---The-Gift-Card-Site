@@ -174,7 +174,7 @@ function ThemeCard({
 
 export function Settings() {
   const { theme, themes, select } = useTheme();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, cloud } = useAuth();
   const { saved, remove, clear } = useSaved();
   // A saved id can outlive its brand — sellers delist cards and the sync drops
   // them — so resolve through the catalog and skip anything that's gone.
@@ -185,6 +185,7 @@ export function Settings() {
   const [justSaved, setJustSaved] = useState(false);
   /** Details are read-only until you ask to change them. */
   const [editing, setEditing] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -204,6 +205,7 @@ export function Settings() {
   const dirty = Boolean(user) && (name.trim() !== user?.name || age !== String(user?.age));
 
   const cancelEdit = () => {
+    setProfileError(null);
     setName(user?.name ?? '');
     setAge(String(user?.age ?? ''));
     setEditing(false);
@@ -228,13 +230,20 @@ export function Settings() {
 
   const setPref = (key: keyof Prefs) => (v: boolean) => setPrefs((p) => ({ ...p, [key]: v }));
 
-  const saveProfile = (e: React.FormEvent) => {
+  const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = Number(age);
-    updateProfile({
-      name: name.trim() || user!.name,
-      age: Number.isFinite(parsed) && parsed > 0 ? parsed : user!.age,
-    });
+    setProfileError(null);
+    try {
+      await updateProfile({
+        name: name.trim() || user!.name,
+        age: Number.isFinite(parsed) && parsed > 0 ? parsed : user!.age,
+      });
+    } catch (err) {
+      // Stay in edit mode so nothing typed is lost.
+      setProfileError(err instanceof Error ? err.message : 'Couldn’t save. Please try again.');
+      return;
+    }
     setEditing(false);
     setJustSaved(true);
     window.setTimeout(() => setJustSaved(false), 2000);
@@ -259,7 +268,13 @@ export function Settings() {
           id="account"
           icon="user"
           title="Account"
-          description={user ? 'Your details, kept on this device.' : 'Not signed in.'}
+          description={
+            !user
+              ? 'Not signed in.'
+              : cloud
+                ? 'Your details and saved cards, on every device you sign in on.'
+                : 'Your details, kept on this device.'
+          }
         >
           {user ? (
             <form onSubmit={saveProfile} className="grid gap-3 sm:max-w-md">
@@ -336,6 +351,12 @@ export function Settings() {
                   </span>
                 )}
               </div>
+
+              {profileError && (
+                <p role="alert" className="text-sm text-[var(--bad)]">
+                  {profileError}
+                </p>
+              )}
             </form>
           ) : (
             <div className="flex flex-wrap gap-2">

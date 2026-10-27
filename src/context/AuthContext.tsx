@@ -1,19 +1,21 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 
 /**
- * Local-only accounts.
+ * Accounts that follow you between devices.
  *
- * There is no server in this project — the catalog is a static file and the two
- * API routes are dev-server middleware — so an account lives in this browser's
- * localStorage and nowhere else. That makes it a real sign-in flow for the UI
- * (gated pages, a profile, per-account settings) and *not* real authentication:
- * anyone with devtools can read the store, and nothing is verified.
+ * Sign-up, sign-in and the session all go through /api/auth (see
+ * server/auth-core.mjs): the password is hashed on the server, and the browser
+ * holds nothing but an HttpOnly session cookie. Sign in on a laptop and again
+ * on a phone, and both see the same account and the same saved cards.
  *
- * Passwords are still never kept in the clear. Each account gets a random salt
- * and we store PBKDF2-SHA-256 over the password, so the stored value isn't
- * directly reusable. Treat it as damage limitation for people who reuse
- * passwords, not as security. Swap this provider for real API calls the moment
- * a backend exists — the surface below is deliberately the same shape.
+ * Two things carry over from the older, browser-only accounts:
+ *
+ * - **A fallback.** If the API isn't there (a static preview) or says accounts
+ *   aren't set up (a deployment without its database), sign-in quietly keeps
+ *   working the old way, stored in this browser. `cloud` says which you got.
+ * - **A one-time move.** An account made before this existed lives only in
+ *   the browser that made it. Signing in there with its password checks the
+ *   old record and recreates the account on the server — no second sign-up.
  */
 
 export interface User {
@@ -23,7 +25,7 @@ export interface User {
   createdAt: string;
 }
 
-interface StoredAccount extends User {
+interface LocalAccount extends User {
   salt: string;
   hash: string;
 }
@@ -32,16 +34,25 @@ interface AuthValue {
   user: User | null;
   signUp: (input: { name: string; email: string; age: number; password: string }) => Promise<void>;
   signIn: (input: { email: string; password: string }) => Promise<void>;
-  signOut: () => void;
-  updateProfile: (patch: Partial<Pick<User, 'name' | 'age'>>) => void;
-  /** True until the stored session has been read, so the UI doesn't flash. */
+  signOut: () => Promise<void>;
+  updateProfile: (patch: Partial<Pick<User, 'name' | 'age'>>) => Promise<void>;
+  /** True until we know who's signed in, so the UI doesn't flash. */
   loading: boolean;
+  /** Accounts are on the server and work across devices. */
+  cloud: boolean;
+  /**
+   * The account's saved cards as the server last reported them, delivered
+   * with the session so the saved list doesn't need a second round trip.
+   */
+  serverSaved: string[] | null;
 }
 
 export const AuthContext = createContext<AuthValue | null>(null);
 
 const ACCOUNTS_KEY = 'vaultly:accounts';
 const SESSION_KEY = 'vaultly:session';
+/** Last known signed-in user, shown while the session check is in flight. */
+const USER_CACHE_KEY = 'vaultly:user';
 
 const readJson = <T,>(key: string, fallback: T): T => {
   try {
@@ -54,16 +65,17 @@ const readJson = <T,>(key: string, fallback: T): T => {
 
 const writeJson = (key: string, value: unknown) => {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // Blocked site data — the session just won't survive a reload.
+    // Blocked site data — it just won't survive a reload.
   }
 };
 
 const toHex = (buf: ArrayBuffer) =>
   [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 
-/** PBKDF2 so a leaked store can't be reversed with a plain rainbow table. */
+/** The browser-only accounts' hash, kept to check (and move) old accounts. */
 async function derive(password: string, salt: string): Promise<string> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, [
@@ -79,6 +91,8 @@ async function derive(password: string, salt: string): Promise<string> {
 
 const normalise = (email: string) => email.trim().toLowerCase();
 
+const withoutSecrets = ({ salt: _s, hash: _h, ...user }: LocalAccount): User => user;
+
 export const PASSWORD_RULES = 'At least 8 characters, with a letter and a number.';
 
 export function validatePassword(password: string): string | null {
@@ -88,89 +102,185 @@ export function validatePassword(password: string): string | null {
   return null;
 }
 
+/* ---------------------------------- API ---------------------------------- */
+
+interface ApiResult {
+  ok: boolean;
+  status: number;
+  error?: string;
+  available?: boolean;
+  user?: User | null;
+  saved?: string[];
+}
+
+export async function authApi(
+  action: string,
+  method: 'GET' | 'POST' | 'PATCH',
+  body?: unknown,
+): Promise<ApiResult> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/auth/${action}`, {
+      method,
+      credentials: 'same-origin',
+      headers: body ? { 'content-type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    return { ok: false, status: 0, error: 'Couldn’t reach Vaultly. Check your connection.' };
+  }
+  const json = await res.json().catch(() => null);
+  if (!json || typeof json !== 'object') {
+    return { ok: false, status: res.status, error: 'Something went wrong. Please try again.' };
+  }
+  return { ...json, status: res.status };
+}
+
+const raise = (result: ApiResult) => {
+  throw new Error(result.error ?? 'Something went wrong. Please try again.');
+};
+
+/* -------------------------------- provider ------------------------------- */
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => readJson<User | null>(USER_CACHE_KEY, null));
   const [loading, setLoading] = useState(true);
+  const [cloud, setCloud] = useState(false);
+  const [serverSaved, setServerSaved] = useState<string[] | null>(null);
+
+  // Remembered so the next visit can show you as signed in straight away.
+  useEffect(() => writeJson(USER_CACHE_KEY, cloud ? user : null), [user, cloud]);
 
   useEffect(() => {
-    const email = readJson<string | null>(SESSION_KEY, null);
-    if (email) {
-      const accounts = readJson<StoredAccount[]>(ACCOUNTS_KEY, []);
-      const found = accounts.find((a) => a.email === email);
-      if (found) {
-        const { salt: _salt, hash: _hash, ...safe } = found;
-        setUser(safe);
+    let live = true;
+    authApi('session', 'GET').then((result) => {
+      if (!live) return;
+      if (result.ok && result.available) {
+        setCloud(true);
+        setUser(result.user ?? null);
+        setServerSaved(result.user ? (result.saved ?? []) : null);
+      } else {
+        // No accounts API here: browser-only sign-in, as before.
+        const email = readJson<string | null>(SESSION_KEY, null);
+        const found = email && readJson<LocalAccount[]>(ACCOUNTS_KEY, []).find((a) => a.email === email);
+        setUser(found ? withoutSecrets(found) : null);
       }
-    }
-    setLoading(false);
-  }, []);
-
-  const signUp = useCallback<AuthValue['signUp']>(async ({ name, email, age, password }) => {
-    const accounts = readJson<StoredAccount[]>(ACCOUNTS_KEY, []);
-    const id = normalise(email);
-
-    if (accounts.some((a) => a.email === id)) {
-      throw new Error('An account with that email already exists. Sign in instead.');
-    }
-    const bad = validatePassword(password);
-    if (bad) throw new Error(bad);
-
-    const salt = toHex(crypto.getRandomValues(new Uint8Array(16)).buffer);
-    const account: StoredAccount = {
-      name: name.trim(),
-      email: id,
-      age,
-      createdAt: new Date().toISOString(),
-      salt,
-      hash: await derive(password, salt),
+      setLoading(false);
+    });
+    return () => {
+      live = false;
     };
-
-    writeJson(ACCOUNTS_KEY, [...accounts, account]);
-    writeJson(SESSION_KEY, id);
-    const { salt: _s, hash: _h, ...safe } = account;
-    setUser(safe);
   }, []);
 
-  const signIn = useCallback<AuthValue['signIn']>(async ({ email, password }) => {
-    const accounts = readJson<StoredAccount[]>(ACCOUNTS_KEY, []);
-    const found = accounts.find((a) => a.email === normalise(email));
-
-    // Same message either way, so this can't be used to discover which emails
-    // have accounts.
-    const wrong = new Error('That email and password don’t match an account.');
-    if (!found) throw wrong;
-    if ((await derive(password, found.salt)) !== found.hash) throw wrong;
-
-    writeJson(SESSION_KEY, found.email);
-    const { salt: _s, hash: _h, ...safe } = found;
-    setUser(safe);
+  const signedIn = useCallback((result: ApiResult) => {
+    setUser(result.user ?? null);
+    setServerSaved(result.saved ?? []);
   }, []);
 
-  const signOut = useCallback(() => {
-    try {
-      localStorage.removeItem(SESSION_KEY);
-    } catch {
-      // Nothing to do — the in-memory session is cleared regardless.
-    }
+  const signUp = useCallback<AuthValue['signUp']>(
+    async ({ name, email, age, password }) => {
+      const bad = validatePassword(password);
+      if (bad) throw new Error(bad);
+
+      if (cloud) {
+        const result = await authApi('signup', 'POST', { name, email, age, password });
+        if (!result.ok) raise(result);
+        return signedIn(result);
+      }
+
+      const accounts = readJson<LocalAccount[]>(ACCOUNTS_KEY, []);
+      const id = normalise(email);
+      if (accounts.some((a) => a.email === id)) {
+        throw new Error('An account with that email already exists. Sign in instead.');
+      }
+      const salt = toHex(crypto.getRandomValues(new Uint8Array(16)).buffer);
+      const account: LocalAccount = {
+        name: name.trim(),
+        email: id,
+        age,
+        createdAt: new Date().toISOString(),
+        salt,
+        hash: await derive(password, salt),
+      };
+      writeJson(ACCOUNTS_KEY, [...accounts, account]);
+      writeJson(SESSION_KEY, id);
+      setUser(withoutSecrets(account));
+    },
+    [cloud, signedIn],
+  );
+
+  const signIn = useCallback<AuthValue['signIn']>(
+    async ({ email, password }) => {
+      const id = normalise(email);
+      const accounts = readJson<LocalAccount[]>(ACCOUNTS_KEY, []);
+      const local = accounts.find((a) => a.email === id);
+      const localMatches = async () =>
+        Boolean(local) && (await derive(password, local!.salt)) === local!.hash;
+
+      // Same message either way, so this can't be used to discover which
+      // emails have accounts.
+      const wrong = new Error('That email and password don’t match an account.');
+
+      if (cloud) {
+        const result = await authApi('signin', 'POST', { email: id, password });
+        if (result.ok) return signedIn(result);
+        if (result.status !== 401 || !(await localMatches())) raise(result);
+
+        // The account only exists in this browser, from before accounts moved
+        // to the server. The password checks out against it, so move it.
+        const moved = await authApi('signup', 'POST', {
+          name: local!.name,
+          email: id,
+          age: local!.age,
+          createdAt: local!.createdAt,
+          password,
+        });
+        // 409: the email was registered on the server since, with a different
+        // password. The server account wins; this password isn't its password.
+        if (moved.status === 409) throw wrong;
+        if (!moved.ok) raise(moved);
+        writeJson(ACCOUNTS_KEY, accounts.filter((a) => a.email !== id));
+        writeJson(SESSION_KEY, null);
+        return signedIn(moved);
+      }
+
+      if (!(await localMatches())) throw wrong;
+      writeJson(SESSION_KEY, id);
+      setUser(withoutSecrets(local!));
+    },
+    [cloud, signedIn],
+  );
+
+  const signOut = useCallback<AuthValue['signOut']>(async () => {
+    // Signed out here straight away, whatever the network does.
     setUser(null);
-  }, []);
+    setServerSaved(null);
+    writeJson(SESSION_KEY, null);
+    if (cloud) await authApi('signout', 'POST');
+  }, [cloud]);
 
-  const updateProfile = useCallback<AuthValue['updateProfile']>((patch) => {
-    setUser((current) => {
-      if (!current) return current;
-      const next = { ...current, ...patch };
-      const accounts = readJson<StoredAccount[]>(ACCOUNTS_KEY, []);
+  const updateProfile = useCallback<AuthValue['updateProfile']>(
+    async (patch) => {
+      if (!user) return;
+      if (cloud) {
+        const result = await authApi('profile', 'PATCH', patch);
+        if (!result.ok) raise(result);
+        setUser(result.user ?? { ...user, ...patch });
+        return;
+      }
+      const accounts = readJson<LocalAccount[]>(ACCOUNTS_KEY, []);
       writeJson(
         ACCOUNTS_KEY,
-        accounts.map((a) => (a.email === current.email ? { ...a, ...patch } : a)),
+        accounts.map((a) => (a.email === user.email ? { ...a, ...patch } : a)),
       );
-      return next;
-    });
-  }, []);
+      setUser({ ...user, ...patch });
+    },
+    [cloud, user],
+  );
 
   const value = useMemo<AuthValue>(
-    () => ({ user, signUp, signIn, signOut, updateProfile, loading }),
-    [user, signUp, signIn, signOut, updateProfile, loading],
+    () => ({ user, signUp, signIn, signOut, updateProfile, loading, cloud, serverSaved }),
+    [user, signUp, signIn, signOut, updateProfile, loading, cloud, serverSaved],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

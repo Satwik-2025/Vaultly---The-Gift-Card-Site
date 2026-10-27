@@ -13,6 +13,14 @@ import { PASSWORD_RULES, validatePassword } from '../context/AuthContext';
  * what lets the switch's pill slide across and the extra sign-up fields
  * expand in, rather than the whole card being torn down and rebuilt.
  *
+ * Switching has to feel like one form changing shape, not two pages. So
+ * nothing on the card is allowed to snap: the headings are stacked in one cell
+ * (it's always as tall as the taller one) and cross-fade, and everything that
+ * comes and goes — name and age, the password rules, confirm, the error —
+ * folds its spacing into the part that animates. A grid `gap` doesn't work
+ * here: it stays at full size while a row shrinks to nothing, then vanishes
+ * all at once, and the fields below jump up to close it.
+ *
  * Email and password only — deliberately no third-party sign-in.
  */
 
@@ -21,27 +29,86 @@ const TABS = [
   { mode: 'signup', label: 'Create account', to: '/signup' },
 ] as const;
 
+const HEADINGS = {
+  signup: {
+    title: 'Create your account',
+    blurb: 'Save the cards you’re watching and keep your settings.',
+  },
+  signin: { title: 'Welcome back', blurb: 'Sign in to pick up where you left off.' },
+} as const;
+
+const EASE = [0.16, 1, 0.3, 1] as const;
+/*
+  Even in, even out. The snappy ease-out used elsewhere front-loads the
+  movement — most of a 100px collapse happened in the first few frames — which
+  reads as a jump. This spreads it out so the fields below glide into place.
+*/
+const GLIDE = [0.45, 0, 0.25, 1] as const;
+
+/**
+ * Opens to its natural height and folds back to nothing. Spacing belongs
+ * inside `children` (or as padding here), never as a margin outside it.
+ */
+function Reveal({
+  show,
+  className = '',
+  children,
+}: {
+  show: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence initial={false}>
+      {show && (
+        <motion.div
+          key="reveal"
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.36, ease: GLIDE }}
+          className={`overflow-hidden ${className}`}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/*
+  Fields reveal with a 4px pad (and a matching negative margin) so the input's
+  focus ring isn't clipped by the overflow. Collapsed, the box is exactly that
+  pad tall and the margin cancels it, so it takes no room at all.
+*/
+const RING_ROOM_TOP = '-mx-1 -mt-1 px-1 pt-1';
+const RING_ROOM_BOTTOM = '-mx-1 -mb-1 px-1 pb-1';
+
 function Field({
   label,
   hint,
+  className = '',
   children,
 }: {
   label: string;
   hint?: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-2">
-      <span className="text-sm font-semibold">{label}</span>
+    <label className={`flex flex-col ${className}`}>
+      <span className="mb-2 text-sm font-semibold">{label}</span>
       {children}
-      {hint && <span className="text-faint text-xs">{hint}</span>}
+      <Reveal show={Boolean(hint)}>
+        <span className="text-faint block pt-2 text-xs">{hint}</span>
+      </Reveal>
     </label>
   );
 }
 
 export function SignIn({ mode }: { mode: 'signin' | 'signup' }) {
   const creating = mode === 'signup';
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, cloud } = useAuth();
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: { from?: string } };
 
@@ -89,7 +156,7 @@ export function SignIn({ mode }: { mode: 'signin' | 'signup' }) {
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.45, ease: EASE }}
         className="glass w-full max-w-[28rem] rounded-[1.75rem] p-6 sm:p-9"
       >
         <img
@@ -100,14 +167,30 @@ export function SignIn({ mode }: { mode: 'signin' | 'signup' }) {
           className="h-12 w-12 rounded-[22%] shadow-lg"
         />
 
-        <h1 className="font-display mt-5 text-[1.75rem] leading-tight font-extrabold sm:text-3xl">
-          {creating ? 'Create your account' : 'Welcome back'}
-        </h1>
-        <p className="text-muted mt-1.5 text-sm leading-relaxed">
-          {creating
-            ? 'Save the cards you’re watching and keep your settings.'
-            : 'Sign in to pick up where you left off.'}
-        </p>
+        {/*
+          Both headings are always here, stacked in one grid cell, so the cell
+          is as tall as the longer one and switching never moves the card.
+        */}
+        <div className="mt-5 grid">
+          {(Object.keys(HEADINGS) as (keyof typeof HEADINGS)[]).map((key) => {
+            const active = key === mode;
+            const Heading = active ? 'h1' : 'p';
+            return (
+              <div
+                key={key}
+                aria-hidden={!active}
+                className={`[grid-area:1/1] transition-opacity duration-300 ${
+                  active ? 'opacity-100' : 'pointer-events-none opacity-0'
+                }`}
+              >
+                <Heading className="font-display text-[1.75rem] leading-tight font-extrabold sm:text-3xl">
+                  {HEADINGS[key].title}
+                </Heading>
+                <p className="text-muted mt-1.5 text-sm leading-relaxed">{HEADINGS[key].blurb}</p>
+              </div>
+            );
+          })}
+        </div>
 
         {/* The two forms side by side, as a switch. */}
         <div
@@ -142,41 +225,30 @@ export function SignIn({ mode }: { mode: 'signin' | 'signup' }) {
           })}
         </div>
 
-        <form onSubmit={submit} className="mt-7 grid gap-5" noValidate>
-          <AnimatePresence initial={false}>
-            {creating && (
-              <motion.div
-                key="about-you"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                className="-m-1 overflow-hidden"
-              >
-                {/* Name gets the room; age only ever needs three digits. */}
-                <div className="grid grid-cols-[1fr_6.5rem] gap-3 p-1">
-                  <Field label="Full name">
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="input"
-                      placeholder="Your full name"
-                      autoComplete="name"
-                    />
-                  </Field>
-                  <Field label="Age">
-                    <input
-                      value={age}
-                      onChange={(e) => setAge(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                      className="input"
-                      placeholder="e.g. 24"
-                      inputMode="numeric"
-                    />
-                  </Field>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <form onSubmit={submit} className="mt-7 flex flex-col" noValidate>
+          <Reveal show={creating} className={RING_ROOM_TOP}>
+            {/* Name gets the room; age only ever needs three digits. */}
+            <div className="grid grid-cols-[1fr_6.5rem] gap-3 pb-5">
+              <Field label="Full name">
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="input"
+                  placeholder="Your full name"
+                  autoComplete="name"
+                />
+              </Field>
+              <Field label="Age">
+                <input
+                  value={age}
+                  onChange={(e) => setAge(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                  className="input"
+                  placeholder="e.g. 24"
+                  inputMode="numeric"
+                />
+              </Field>
+            </div>
+          </Reveal>
 
           <Field label="Email">
             <input
@@ -189,7 +261,7 @@ export function SignIn({ mode }: { mode: 'signin' | 'signup' }) {
             />
           </Field>
 
-          <Field label="Password" hint={creating ? PASSWORD_RULES : undefined}>
+          <Field label="Password" hint={creating ? PASSWORD_RULES : undefined} className="mt-5">
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -210,43 +282,32 @@ export function SignIn({ mode }: { mode: 'signin' | 'signup' }) {
             </div>
           </Field>
 
-          <AnimatePresence initial={false}>
-            {creating && (
-              <motion.div
-                key="confirm"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                className="-m-1 overflow-hidden"
+          <Reveal show={creating} className={RING_ROOM_BOTTOM}>
+            <Field label="Confirm password" className="pt-5">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className="input"
+                placeholder="Type it again"
+                autoComplete="new-password"
+              />
+            </Field>
+          </Reveal>
+
+          <Reveal show={Boolean(error)}>
+            <div className="pt-5">
+              <p
+                role="alert"
+                className="flex items-start gap-2 rounded-xl border border-[var(--bad)]/35 bg-[var(--bad)]/10 px-3.5 py-2.5 text-sm leading-relaxed text-[var(--bad)]"
               >
-                <div className="p-1">
-                  <Field label="Confirm password">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={confirm}
-                      onChange={(e) => setConfirm(e.target.value)}
-                      className="input"
-                      placeholder="Type it again"
-                      autoComplete="new-password"
-                    />
-                  </Field>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <Icon name="close" className="mt-0.5 h-4 w-4 shrink-0" />
+                {error}
+              </p>
+            </div>
+          </Reveal>
 
-          {error && (
-            <p
-              role="alert"
-              className="flex items-start gap-2 rounded-xl border border-[var(--bad)]/35 bg-[var(--bad)]/10 px-3.5 py-2.5 text-sm leading-relaxed text-[var(--bad)]"
-            >
-              <Icon name="close" className="mt-0.5 h-4 w-4 shrink-0" />
-              {error}
-            </p>
-          )}
-
-          <button type="submit" disabled={busy} className="btn btn-primary mt-1 h-12 w-full">
+          <button type="submit" disabled={busy} className="btn btn-primary mt-6 h-12 w-full">
             {busy ? 'One moment…' : creating ? 'Create account' : 'Sign in'}
             {!busy && <Icon name="arrowRight" className="h-4 w-4" />}
           </button>
@@ -259,16 +320,20 @@ export function SignIn({ mode }: { mode: 'signin' | 'signup' }) {
           </Link>
         </p>
 
-        {/*
-          Said plainly rather than buried: this project has no server, so an
-          account is a record in this browser.
-        */}
         <p className="text-faint mt-6 flex gap-2 border-t border-[var(--border)] pt-4 text-xs leading-relaxed">
           <Icon name="shield" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>
-            Accounts are stored in this browser only. Your password is hashed before it’s saved,
-            but please don’t reuse one that protects anything important.
-          </span>
+          {cloud ? (
+            <span>
+              Sign in on any device to see the same account and saved cards. Your password is
+              hashed on our server and never stored as you typed it.
+            </span>
+          ) : (
+            // Said plainly rather than buried: there's no accounts server here.
+            <span>
+              Accounts are stored in this browser only. Your password is hashed before it’s saved,
+              but please don’t reuse one that protects anything important.
+            </span>
+          )}
         </p>
       </motion.div>
     </div>
