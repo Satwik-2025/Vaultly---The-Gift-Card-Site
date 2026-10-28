@@ -1,5 +1,5 @@
 import { fetchText, extractSitemapUrls } from '../lib/http.mjs';
-import { htmlToBullets, htmlToSteps, htmlToText, cleanBrandName, brandKey } from '../lib/html.mjs';
+import { clip, htmlToBullets, htmlToSteps, htmlToText, cleanBrandName, brandKey } from '../lib/html.mjs';
 import { deriveKeyFacts } from '../lib/facts.mjs';
 import { findViaSitemap } from '../lib/find.mjs';
 
@@ -248,7 +248,7 @@ export async function fetchBrand({ slug, url }) {
     logo: product.images?.thumbnail ?? product.image ?? null,
     image: product.images?.thumbnail ?? null,
     website: null,
-    description: description ? description.slice(0, 240) : null,
+    description: description ? clip(description) : null,
     offer: {
       platformId: PLATFORM.id,
       productUrl: url,

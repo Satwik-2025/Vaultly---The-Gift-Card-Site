@@ -1,0 +1,50 @@
+name: Wrong price or term
+description: A price, discount or term on Vaultly doesn't match the seller's own page.
+labels: [data]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every number on Vaultly is read from a seller's own page, so a mismatch usually means a rule
+        misread something. The more exact you are, the faster it's found.
+  - type: input
+    id: page
+    attributes:
+      label: Vaultly page
+      description: The address of the brand page on Vaultly.
+      placeholder: https://vaultly-gules.vercel.app/gift-card/air-india
+    validations:
+      required: true
+  - type: dropdown
+    id: seller
+    attributes:
+      label: Which seller's panel?
+      options: [GyFTR, Woohoo, Amazon, CashKaro, More than one]
+    validations:
+      required: true
+  - type: textarea
+    id: shown
+    attributes:
+      label: What Vaultly shows
+      placeholder: "e.g. Woohoo: 99% off, every amount"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What the seller's own page shows
+      placeholder: "e.g. No discount. The only offer is 90% off a ₹10 order, new customers only"
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link to the seller's page
+    validations:
+      required: true
+  - type: input
+    id: when
+    attributes:
+      label: When you checked
+      description: Seller pages change through the day.
+      placeholder: 29 Oct, about 3 pm IST

@@ -162,6 +162,22 @@ export function htmlToSteps(html) {
     .slice(0, 12);
 }
 
+/**
+ * Shortens text to about `max` characters without leaving a word cut in half:
+ * at the last full sentence if there is one past the halfway mark, otherwise
+ * at the last word, with an ellipsis. A hard slice turned "…the latest styles"
+ * into "…the latest s" on the page.
+ */
+export function clip(text, max = 240) {
+  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const head = t.slice(0, max);
+  const sentence = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '));
+  if (sentence > max / 2) return head.slice(0, sentence + 1);
+  const word = head.lastIndexOf(' ');
+  return `${head.slice(0, word > 0 ? word : max).replace(/[\s,;:\-–—]+$/, '')}…`;
+}
+
 export function htmlToBullets(html) {
   const seen = new Set();
   return (

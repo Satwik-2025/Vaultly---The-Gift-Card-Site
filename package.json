@@ -1,8 +1,30 @@
 {
-  "name": "giftcard-compare",
+  "name": "vaultly",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "Compare gift card prices across GyFTR, Woohoo and Amazon — with the four terms that decide whether the discount is worth it.",
   "type": "module",
+  "license": "MIT",
+  "author": "Satwik Gupta <satwikgupta2005@gmail.com> (https://github.com/Satwik-2025)",
+  "homepage": "https://vaultly-gules.vercel.app/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Satwik-2025/Vaultly---The-Gift-Card-Site.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Satwik-2025/Vaultly---The-Gift-Card-Site/issues"
+  },
+  "keywords": [
+    "gift-cards",
+    "price-comparison",
+    "react",
+    "typescript",
+    "vite",
+    "tailwindcss",
+    "web-scraping",
+    "playwright",
+    "vercel"
+  ],
   "scripts": {
     "dev": "vite",
     "scrape": "node scripts/scrape.mjs",

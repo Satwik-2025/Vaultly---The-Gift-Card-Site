@@ -1,0 +1,20 @@
+name: Feature request
+description: An idea for something Vaultly should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem first — it's easier to find a good fix from there.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to see?
+  - type: input
+    id: seller
+    attributes:
+      label: A seller you'd like added?
+      description: Name it and link its gift-card pages, if so.
