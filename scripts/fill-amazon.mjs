@@ -13,6 +13,7 @@
  * Usage:
  *   node scripts/fill-amazon.mjs                 # brands with no Amazon offer
  *   node scripts/fill-amazon.mjs --all           # re-check every brand
+ *   node scripts/fill-amazon.mjs --refresh       # re-read the brands Amazon already has
  *   node scripts/fill-amazon.mjs --limit 50
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -31,28 +32,50 @@ const flagValue = (name, fallback) => {
 };
 
 const all = argv.includes('--all');
+/**
+ * The routine refresh. Goes brand by brand the way a shopper would — search the
+ * name, open the result — rather than opening product pages directly, which is
+ * what Amazon's bot check kept interrupting. Paced, and it stops for good the
+ * moment Amazon refuses: carrying on only prolongs the block.
+ */
+const refresh = argv.includes('--refresh');
 const limit = flagValue('limit', Infinity);
 
 const catalog = JSON.parse(readFileSync(CATALOG, 'utf8'));
+const amazonOffer = (b) => b.offers.find((o) => o.platformId === 'amazon');
 const targets = catalog.brands
-  .filter((b) => all || !b.offers.some((o) => o.platformId === 'amazon'))
+  .filter((b) => (refresh ? amazonOffer(b) : all || !amazonOffer(b)))
+  // Oldest reading first, so a run that has to stop early still moved the
+  // stalest prices forward.
+  .sort((a, b) =>
+    refresh
+      ? String(amazonOffer(a).lastChecked ?? '').localeCompare(String(amazonOffer(b).lastChecked ?? ''))
+      : 0,
+  )
   .slice(0, limit);
 
 console.log(`${targets.length} brand(s) to check on Amazon.\n`);
 
 let added = 0;
 let removed = 0;
+let refreshed = 0;
 let i = 0;
 
 for (const brand of targets) {
   i += 1;
-  const existing = brand.offers.find((o) => o.platformId === 'amazon');
+  const existing = amazonOffer(brand);
+  if (refresh && i > 1) await amazon.politePause(4000, 9000);
   let result;
   try {
     result = await refreshSeller('amazon', brand, existing, new Date().toISOString());
   } catch (err) {
     console.log(`[${i}/${targets.length}] ${brand.name} — error: ${err.message}`);
     continue;
+  }
+
+  if (result.status === 'blocked') {
+    console.log(`[${i}/${targets.length}] ${brand.name} — Amazon is showing a bot check. Stopping here so it doesn't get worse.`);
+    break;
   }
 
   if (result.status === 'added' && result.offer) {
@@ -62,6 +85,7 @@ for (const brand of targets) {
     added += 1;
     console.log(`[${i}/${targets.length}] + ${brand.name} — Amazon ${result.offer.headlineDiscountPct}% (${result.offer.denominations.length} denoms)`);
   } else if (result.status === 'updated' && result.offer) {
+    refreshed += 1;
     brand.offers = [...brand.offers.filter((o) => o.platformId !== 'amazon'), result.offer].sort(
       (a, b) => b.headlineDiscountPct - a.headlineDiscountPct,
     );
@@ -70,7 +94,7 @@ for (const brand of targets) {
     brand.offers = brand.offers.filter((o) => o.platformId !== 'amazon');
     removed += 1;
     console.log(`[${i}/${targets.length}] - ${brand.name} — Amazon delisted`);
-  } else if (i % 25 === 0) {
+  } else if (refresh || i % 25 === 0) {
     console.log(`[${i}/${targets.length}] …${brand.name}`);
   }
 
@@ -80,4 +104,4 @@ for (const brand of targets) {
 }
 
 await amazon.closeBrowser();
-console.log(`\nDone. Added ${added}, removed ${removed}.`);
+console.log(`\nDone. Added ${added}, removed ${removed}${refreshed ? `, refreshed ${refreshed}` : ''}.`);

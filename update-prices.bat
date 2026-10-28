@@ -19,9 +19,9 @@ call node scripts/scrape.mjs --only gyftr,woohoo
 if errorlevel 1 echo      Something went wrong here - carrying on with the rest.
 
 echo.
-echo [3/6] Amazon (a CAPTCHA just keeps the old Amazon prices)...
-call node scripts/scrape.mjs --only amazon
-if errorlevel 1 echo      Amazon didn't update this time - its old prices are kept.
+echo [3/6] Amazon, one brand at a time (a bot check stops it and the rest keep their old prices)...
+call node scripts/fill-amazon.mjs --refresh
+if errorlevel 1 echo      Amazon didn't finish this time - what it did read is kept.
 
 echo.
 echo [4/6] CashKaro cashback...
