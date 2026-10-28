@@ -9,7 +9,7 @@ import { generatedAt, listPlatforms } from '../services/catalog';
 const CONTACT = {
   email: 'satwikgupta2005@gmail.com',
   github: 'https://github.com/Satwik-2025',
-  linkedin: '',
+  linkedin: 'https://www.linkedin.com/in/satwikgupta2005/',
 };
 
 /** The GitHub and LinkedIn marks, filled, at text size. */
