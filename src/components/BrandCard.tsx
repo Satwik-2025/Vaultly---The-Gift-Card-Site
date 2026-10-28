@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Icon } from './Icon';
 import { BrandMark } from './BrandMark';
-import { bestDiscount, formatPct, getPlatform, rankedOffers } from '../services/catalog';
+import { bestDiscount, effectiveDiscount, formatPct, getPlatform, rankedOffers } from '../services/catalog';
 import { useSaved } from '../hooks/useApp';
 import type { Brand } from '../types';
 import { ink } from '../lib/color';
@@ -85,7 +85,8 @@ export function BrandCard({ brand, index = 0 }: { brand: Brand; index?: number }
           </p>
           {offers.map((offer) => {
             const platform = getPlatform(offer.platformId);
-            const isBest = offer.headlineDiscountPct === top;
+            const pct = effectiveDiscount(offer);
+            const isBest = pct === top;
             return (
               <div
                 key={offer.platformId}
@@ -100,9 +101,7 @@ export function BrandCard({ brand, index = 0 }: { brand: Brand; index?: number }
                   className={`text-sm font-bold tabular-nums ${isBest && top > 0 ? '' : 'text-muted'}`}
                   style={isBest && top > 0 ? { color: ink(platform.accent) } : undefined}
                 >
-                  {offer.headlineDiscountPct > 0
-                    ? `−${formatPct(offer.headlineDiscountPct)}%`
-                    : 'No discount'}
+                  {pct > 0 ? `−${formatPct(pct)}%` : 'No discount'}
                 </span>
               </div>
             );

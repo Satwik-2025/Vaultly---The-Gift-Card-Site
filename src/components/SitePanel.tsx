@@ -2,7 +2,7 @@ import { PlatformMark } from '../components/PlatformMark';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Icon } from './Icon';
-import { formatINR, formatPct, getPlatform, payable, savings } from '../services/catalog';
+import { formatINR, formatPct, getPlatform, savings } from '../services/catalog';
 import type { Brand, Denomination, Offer } from '../types';
 import { ink } from '../lib/color';
 import { howToUseSteps } from '../lib/howToUse';
@@ -91,9 +91,33 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
     : (offer.denominations.find((d) => denomKey(d) === selected) ?? defaultDenom);
 
   const amount = denom?.value ?? 0;
-  const discountPct = denom?.discountPct ?? 0;
-  const pay = payable(amount, discountPct);
-  const save = savings(amount, discountPct);
+
+  /*
+    How you pay can change the price. GyFTR's Air India card is 5% by UPI and
+    4% by credit card; Woohoo's is 0% as listed but 6% by UPI with code WOOHOO.
+    Those used to sit in a row of chips while the price ignored them, so
+    picking ₹5,000 on Woohoo said "you pay ₹5,000". Now a method is chosen —
+    the best one to start with — and the price follows it.
+
+    A method's rate replaces the card's rather than adding to it: on both
+    sellers the payment rate *is* the discount you get at checkout.
+  */
+  const methods = offer.paymentOffers.filter((p) => !p.restricted && p.discountPct > 0);
+  const bestMethod = methods.reduce<(typeof methods)[number] | null>(
+    (b, p) => (!b || p.discountPct > b.discountPct ? p : b),
+    null,
+  );
+  const [payWith, setPayWith] = useState<string | null>(
+    bestMethod && bestMethod.discountPct >= offer.headlineDiscountPct ? bestMethod.name : null,
+  );
+  const method = methods.find((p) => p.name === payWith) ?? null;
+
+  const discountPct = method && !denom?.bonusPct ? method.discountPct : (denom?.discountPct ?? 0);
+  const save = Math.min(
+    savings(amount, discountPct),
+    method?.maxDiscount ? method.maxDiscount : Infinity,
+  );
+  const pay = amount - save;
 
   /*
     "Get 8% Extra" works the other way round from a discount: the amount is
@@ -440,19 +464,42 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
             }
           >
             <p className="text-faint text-[0.6rem] font-bold tracking-[0.14em] uppercase">
-              {bestPaymentPct > offer.headlineDiscountPct
-                ? `Up to ${formatPct(bestPaymentPct)}% off by payment method`
-                : 'Discount by payment method'}
+              {methods.length > 0 ? 'I will pay using' : 'Payment offers'}
             </p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {offer.paymentOffers.map((p) => (
-                <span key={p.name} className="chip !px-2 !py-0.5 !text-[0.62rem]">
-                  {p.name} · {formatPct(p.discountPct)}%
-                  {/* The code is the whole mechanism — without it there's no discount. */}
-                  {p.code ? <span className="ml-1 opacity-70">code {p.code}</span> : null}
-                  {p.limits ? <span className="ml-1 opacity-70">({p.limits})</span> : null}
-                </span>
-              ))}
+            <div role="radiogroup" className="mt-1.5 flex flex-wrap gap-1.5">
+              {offer.paymentOffers.map((p) => {
+                const selectable = !p.restricted && p.discountPct > 0;
+                const active = selectable && p.name === payWith;
+                // Shorter on a chip: "Discount on UPI Payments" -> "UPI Payments".
+                const label = p.name.replace(/^Discount\s+(on|with)\s+/i, '');
+                return selectable ? (
+                  <button
+                    key={p.name}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    // Tapping the chosen method again goes back to the card's own price.
+                    onClick={() => setPayWith(active ? null : p.name)}
+                    className="chip !px-2 !py-0.5 !text-[0.62rem] transition-colors"
+                    style={
+                      active
+                        ? { borderColor: platform.accent, background: `${platform.accent}2e`, color: ink(platform.accent) }
+                        : undefined
+                    }
+                  >
+                    {active && <Icon name="check" className="h-3 w-3" />}
+                    {label} · {formatPct(p.discountPct)}%
+                    {/* The code is the whole mechanism — without it there's no discount. */}
+                    {p.code ? <span className="ml-1 opacity-70">code {p.code}</span> : null}
+                  </button>
+                ) : (
+                  <span key={p.name} className="chip !px-2 !py-0.5 !text-[0.62rem] opacity-80">
+                    {label} · {formatPct(p.discountPct)}%
+                    {p.code ? <span className="ml-1 opacity-70">code {p.code}</span> : null}
+                    {p.limits ? <span className="ml-1 opacity-70">({p.limits})</span> : null}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}
@@ -503,9 +550,18 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
               <span className="tabular-nums">{formatINR(amount)}</span>
             </div>
             <div className="mt-1.5 flex items-center justify-between text-sm">
-              <span className="text-muted">Discount ({formatPct(discountPct)}%)</span>
+              <span className="text-muted">
+                Discount ({formatPct(discountPct)}%
+                {method ? ` · ${method.name.replace(/^Discount\s+(on|with)\s+/i, '')}` : ''})
+              </span>
               <span className="font-semibold tabular-nums text-[var(--ok)]">−{formatINR(save)}</span>
             </div>
+            {method?.code && (
+              <p className="text-faint mt-1 text-[0.68rem]">
+                Apply code <span className="font-bold text-[var(--text)]">{method.code}</span> at
+                checkout.
+              </p>
+            )}
             <div className="my-3 h-px bg-[var(--border)]" />
             <div className="flex items-end justify-between">
               <span className="text-[0.7rem] font-semibold tracking-[0.14em] uppercase">You pay</span>

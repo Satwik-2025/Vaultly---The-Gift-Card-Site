@@ -220,6 +220,9 @@ export async function fetchBrand({ slug, url }) {
   // Woohoo states validity in its own field ("Upto 2 Years from the date of
   // issue") rather than in the terms, so the terms alone said "Not stated".
   const expiry = String(product.expiry ?? '').trim();
+  // The "Terms & Conditions" tab — the full list, beyond the short
+  // "Important instructions" that were all we used to read.
+  const fullTerms = htmlToBullets(product.tnc?.content ?? '');
   const description = htmlToText(product.shortDescription ?? product.description ?? '');
 
   const name = cleanBrandName(product.name);
@@ -248,9 +251,9 @@ export async function fetchBrand({ slug, url }) {
       denominations: isRange ? [] : listed.map((value) => ({ value, discountPct, ...bonus })),
       // An open-value card: the buyer types any amount within these bounds.
       customAmount: isRange ? { min, max, discountPct, ...bonus, sourceUrl: url } : null,
-      keyFacts: deriveKeyFacts([expiry ? `Validity: ${expiry}.` : '', terms]),
+      keyFacts: deriveKeyFacts([expiry ? `Validity: ${expiry}.` : '', terms, fullTerms.join('\n')]),
       howToUse: howToUseFrom(product),
-      otherTerms: htmlToBullets(product.importantInstructions),
+      otherTerms: [...new Set([...htmlToBullets(product.importantInstructions), ...fullTerms])],
       paymentOffers,
       redemption: null,
       inStock: true,

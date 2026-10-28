@@ -255,7 +255,19 @@ const PARTIAL_GLOBAL_RULES = [
 
 const PARTIAL_RULES = [
   {
+    // "Gift Voucher CANNOT be used multiple times" — GyFTR's wording for a
+    // single-use voucher. Has to come before the rule below, which would
+    // otherwise read the same sentence as the opposite.
+    re: /\b(?:can\s*not|cannot|can't|not)\b\s+(?:be\s+)?(?:used|redeemed)(?:\s*\/\s*redeemed)?[^.]{0,30}?multiple\s+times/i,
+    build: () => ({
+      status: 'bad',
+      headline: 'Single use only',
+      detail: 'The whole value goes in one transaction — anything left over is lost.',
+    }),
+  },
+  {
     // "The Beyoung GV can be used/redeemed multiple times"
+    reject: /\b(?:can\s*not|cannot|can't|not)\b\s+(?:be\s+)?(?:used|redeemed)[^.]{0,30}?multiple\s+times/i,
     re: /(?:used|redeemed)(?:\s*\/\s*redeemed)?[^.]{0,30}?multiple\s+times/i,
     build: () => ({
       status: 'good',
@@ -299,7 +311,19 @@ const PARTIAL_RULES = [
     }),
   },
   {
+    // "The card supports full or partial redemption"
+    re: /\b(?:supports?|allows?|permits?)\b[^.]{0,40}?\bpartial\s+redemption\b/i,
+    build: () => ({
+      status: 'good',
+      headline: 'Partial redemption allowed',
+      detail: 'Spend part of the card now and the rest later.',
+    }),
+  },
+  {
     // "This is a one-time-use GV/GC."
+    // Not "any unused balance will lapse after expiry": that's about expiry,
+    // which validity already covers, and says nothing about spending part of it.
+    reject: /\b(?:after|on|upon|post|beyond)\s+(?:the\s+)?(?:expiry|expiration|validity)\b/i,
     re: /(?:single|one)[-\s]?time[-\s]?use|must be (?:used|redeemed) in (?:one|a single) (?:transaction|bill|go)|no\s+(?:balance|refund)\s+(?:will be)?\s*(?:carried|retained|returned)|(?:balance|remaining|unused)[^.]{0,50}?(?:lapse[sd]?|forfeit\w*|lost|not be refunded|cannot be used)/i,
     build: () => ({
       status: 'bad',
@@ -328,6 +352,32 @@ const PARTIAL_RULES = [
 ];
 
 /**
+ * Air India on GyFTR: "Up to 3 Gift Vouchers CAN be used in one bill when the
+ * entire order value is paid using Gift Vouchers. Up to 2 … along with another
+ * payment method." A card cap often has that second, lower limit for when the
+ * vouchers don't cover the whole bill — worth saying, since it's the usual case.
+ */
+function refineCardLimit(fact, sents) {
+  const n = Number(fact?.headline.match(/^Up to (\d+) cards/)?.[1]);
+  if (!n) return fact;
+  for (const s of sents) {
+    const m = s.match(
+      /\bup\s*to\s*(\d{1,2})\b[^.]{0,60}?\b(?:along\s+with|with|plus)\b[^.]{0,30}?\b(?:another|other|any other)\b[^.]{0,20}?\bpayment/i,
+    );
+    const k = Number(m?.[1]);
+    if (k && k < n) {
+      return {
+        ...fact,
+        headline: `Up to ${n} cards · ${k} if you pay part another way`,
+        detail: `${n} vouchers when they cover the whole bill; only ${k} when the rest is paid by card, UPI or similar.`,
+        source: `${fact.source} ${s}`,
+      };
+    }
+  }
+  return fact;
+}
+
+/**
  * @param {string[]} textBlocks - terms, instructions, redemption steps and FAQs.
  */
 export function deriveKeyFacts(textBlocks) {
@@ -345,7 +395,8 @@ export function deriveKeyFacts(textBlocks) {
   }
 
   return {
-    stacking: findFirst(sents, STACKING_RULES) ?? unknown('whether multiple cards can be combined'),
+    stacking: refineCardLimit(findFirst(sents, STACKING_RULES), sents) ??
+      unknown('whether multiple cards can be combined'),
     clubbing:
       findFirst(sents, CLUBBING_RULES) ?? unknown('whether it can be clubbed with other offers'),
     validity: findFirst(sents, VALIDITY_RULES) ?? unknown('a validity period'),

@@ -196,18 +196,32 @@ export const orderedOffers = (brand: Brand): Offer[] => {
   );
 };
 
+/**
+ * The best discount anyone can get from this seller: the card's own discount,
+ * or a payment-method discount open to everyone if that's higher. Woohoo's Air
+ * India card is 0% on its own and 6% paying by UPI with code WOOHOO; ranking
+ * on the card discount alone left that 6% out of every comparison. One-off
+ * promos (new customers, a single order value) don't count — most buyers can't
+ * use them.
+ */
+export const effectiveDiscount = (offer: Offer): number =>
+  offer.paymentOffers.reduce(
+    (n, p) => (p.restricted ? n : Math.max(n, p.discountPct)),
+    offer.headlineDiscountPct,
+  );
+
 export const bestDiscount = (brand: Brand): number =>
-  brand.offers.reduce((n, o) => Math.max(n, o.headlineDiscountPct), 0);
+  brand.offers.reduce((n, o) => Math.max(n, effectiveDiscount(o)), 0);
 
 export const bestOffer = (brand: Brand): Offer | undefined =>
   brand.offers.reduce<Offer | undefined>(
-    (best, o) => (!best || o.headlineDiscountPct > best.headlineDiscountPct ? o : best),
+    (best, o) => (!best || effectiveDiscount(o) > effectiveDiscount(best) ? o : best),
     undefined,
   );
 
 /** Offers ranked best-discount-first, for the strip under a search result. */
 export const rankedOffers = (brand: Brand): Offer[] =>
-  [...brand.offers].sort((a, b) => b.headlineDiscountPct - a.headlineDiscountPct);
+  [...brand.offers].sort((a, b) => effectiveDiscount(b) - effectiveDiscount(a));
 
 export const payable = (value: number, discountPct: number): number =>
   Math.round(value * (1 - discountPct / 100));
@@ -216,9 +230,12 @@ export const savings = (value: number, discountPct: number): number =>
   value - payable(value, discountPct);
 
 export const maxSaving = (offer: Offer): number => {
-  const slabs = offer.denominations.reduce((n, d) => Math.max(n, savings(d.value, d.discountPct)), 0);
+  // The card's own rate, or the best payment rate open to everyone if higher.
+  const bestPayment = effectiveDiscount({ ...offer, headlineDiscountPct: 0 });
+  const pct = (own: number) => Math.max(own, bestPayment);
+  const slabs = offer.denominations.reduce((n, d) => Math.max(n, savings(d.value, pct(d.discountPct))), 0);
   const open = offer.customAmount
-    ? savings(offer.customAmount.max, offer.customAmount.discountPct)
+    ? savings(offer.customAmount.max, pct(offer.customAmount.discountPct))
     : 0;
   return Math.max(slabs, open);
 };

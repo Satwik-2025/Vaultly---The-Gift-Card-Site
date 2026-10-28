@@ -75,6 +75,46 @@ function parseNextData(html) {
   }
 }
 
+/**
+ * What GyFTR's "Instructions", "How to redeem" and "T&C" tabs actually show.
+ *
+ * The page's embedded data carries an older copy of the instructions, and it
+ * can say the opposite of the live one: for Air India it read "can be combined
+ * with any offer" and "Multiple GV/GC can be used", while the tab says vouchers
+ * CANNOT be clubbed with offers and caps them at 3 (2 alongside another
+ * payment method). The tabs load from this endpoint, so read it directly.
+ * Null when it doesn't answer — the embedded copy is still better than nothing.
+ */
+async function liveDetails(cmBrandId) {
+  if (!cmBrandId) return null;
+  try {
+    const res = await fetch(`${ORIGIN}/commonutility/api/v1/shop/getBrandDetail`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ brand: Number(cmBrandId) }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json())?.data;
+    return data && typeof data === 'object' ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `{"1": {"text": "Select your preferred location."}, "2": …}` → steps. */
+function redeemSteps(raw) {
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const steps = Object.keys(parsed ?? {})
+      .sort((a, b) => Number(a) - Number(b))
+      .flatMap((k) => htmlToSteps(parsed[k]?.text ?? ''));
+    return steps.length ? steps : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchBrand({ slug, url }) {
   const { body } = await fetchText(url);
   const next = parseNextData(body);
@@ -82,6 +122,7 @@ export async function fetchBrand({ slug, url }) {
   const detail = brandInfo?.brandDetailStore;
 
   if (!detail?.brand_name) return null;
+  const live = await liveDetails(detail.cm_brand_id);
 
   // `mrp` is the denomination's face value. For subscription brands (Zee5,
   // SonyLIV…) each product is a named pack rather than a plain amount, so keep
@@ -117,13 +158,21 @@ export async function fetchBrand({ slug, url }) {
 
   const discountPct = Number(detail.defaut_pg_dis ?? detail.maxDisValue ?? 0);
 
-  const instructions = htmlToBullets(detail.important_instruction);
+  const instructions = htmlToBullets(live?.product_brand_instruct || detail.important_instruction);
   const checkout = htmlToBullets(detail.checkout_instruction);
+  // The full numbered T&C ("1. This is an Air India Gift Voucher… <br/>2. …").
+  const fullTerms = htmlToBullets(
+    String(live?.product_brand_term_cond ?? '').replace(/<br\s*\/?>\s*\d{1,2}\.\s*/gi, '\n'),
+  ).map((t) => t.replace(/^\d{1,2}\.\s*/, ''));
   const faqText = htmlToText(detail.faqs);
 
+  // The instructions come first: they're GyFTR's own summary, and where the
+  // fine print disagrees with them (Air India's T&C still says "can be
+  // combined with any offer") the summary is what the shop enforces.
   const keyFacts = deriveKeyFacts([
     instructions.join('\n'),
     checkout.join('\n'),
+    fullTerms.join('\n'),
     faqText,
     htmlToText(detail.long_description),
   ]);
@@ -151,9 +200,12 @@ export async function fetchBrand({ slug, url }) {
       denominations: denominations.map((d) => ({ ...d, discountPct })),
       customAmount: null,
       keyFacts,
-      otherTerms: instructions.concat(checkout),
+      otherTerms: [...new Set([...instructions, ...checkout, ...fullTerms])],
       paymentOffers: paymentOffers.length > 1 ? paymentOffers : [],
-      howToUse: howToUseFrom(detail.long_description) ?? howToUseFrom(detail.faqs),
+      howToUse:
+        redeemSteps(live?.product_brand_redeem_step) ??
+        howToUseFrom(detail.long_description) ??
+        howToUseFrom(detail.faqs),
       redemption: detail.redemption_type === 'ON' ? 'Online' : detail.redemption_type || null,
       inStock: true,
       deliveryEta: 'Instant · SMS / email / WhatsApp',

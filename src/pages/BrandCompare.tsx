@@ -15,6 +15,7 @@ import {
   getPlatform,
   maxSaving,
   orderedOffers,
+  effectiveDiscount,
   refreshBrandLive,
 } from '../services/catalog';
 import type { Brand, PlatformId } from '../types';
@@ -228,13 +229,13 @@ export function BrandCompare() {
                 Best deal right now
               </p>
               <p className="font-display mt-1.5 text-2xl font-extrabold">
-                {best.headlineDiscountPct > 0 ? `${formatPct(best.headlineDiscountPct)}% off` : 'At face value'}
+                {effectiveDiscount(best) > 0 ? `${formatPct(effectiveDiscount(best))}% off` : 'At face value'}
                 <span className="text-muted ml-1.5 font-sans text-sm font-semibold">
                   on {bestPlatform.name}
                 </span>
               </p>
               <p className="text-muted mt-1 text-xs">
-                {best.headlineDiscountPct > 0
+                {effectiveDiscount(best) > 0
                   ? `Save up to ${formatINR(maxSaving(best))} on a single card.`
                   : 'No seller is currently discounting this card.'}
               </p>
@@ -409,7 +410,7 @@ export function BrandCompare() {
               key={offer.platformId}
               brand={brand}
               offer={offer}
-              isBest={offer.headlineDiscountPct === best.headlineDiscountPct}
+              isBest={effectiveDiscount(offer) === effectiveDiscount(best)}
               onJumpToTerms={() => scrollTo(termsId(offer.platformId))}
               latestCheck={latestCheck}
             />

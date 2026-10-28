@@ -1,7 +1,7 @@
 import { PlatformMark } from '../components/PlatformMark';
 import { motion } from 'framer-motion';
 import { Icon, type IconName } from './Icon';
-import { formatPct, getPlatform } from '../services/catalog';
+import { effectiveDiscount, formatPct, getPlatform } from '../services/catalog';
 import { KEY_FACT_LABELS, KEY_FACT_ORDER, type FactStatus, type Offer } from '../types';
 import { ink } from '../lib/color';
 
@@ -50,7 +50,7 @@ export function KeyFactsCompare({ offers }: { offers: Offer[] }) {
                 className="shrink-0 text-sm font-extrabold tabular-nums"
                 style={{ color: ink(platform.accent) }}
               >
-                {offer.headlineDiscountPct > 0 ? `−${formatPct(offer.headlineDiscountPct)}%` : '—'}
+                {effectiveDiscount(offer) > 0 ? `−${formatPct(effectiveDiscount(offer))}%` : '—'}
               </span>
             </header>
 
