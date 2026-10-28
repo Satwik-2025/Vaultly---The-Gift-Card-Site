@@ -195,12 +195,20 @@ export async function fetchBrand({ slug, url }) {
     order. That isn't the card's price, so when the headline matches a
     restricted promo the card counts as face value and the promo is shown with
     its conditions instead.
+
+    And the label can outlive the offer. Woohoo's discounts are coupons in
+    the "Offers for you" strip, and the headline normally restates the best of
+    them (164 of 182 discounted cards). When RuPay's promo ended the strip
+    went empty but the label still read "99% Discount", with nothing on the
+    page giving it. A headline discount with no live offer behind it is
+    therefore face value. "Get X% Extra" is exempt: that bonus is the card's.
   */
-  const discountPct = campaigns.some(
-    (c) => c.restricted && Math.abs(c.discountPct - headline.discountPct) <= 10,
-  )
-    ? 0
-    : headline.discountPct;
+  const unbacked = !bonusPct && headline.discountPct > 0 && campaigns.length === 0;
+  const discountPct =
+    unbacked ||
+    campaigns.some((c) => c.restricted && Math.abs(c.discountPct - headline.discountPct) <= 10)
+      ? 0
+      : headline.discountPct;
 
   const listed = (price.denominations ?? [])
     .map(Number)

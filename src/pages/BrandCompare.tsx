@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Icon } from '../components/Icon';
 import { SitePanel } from '../components/SitePanel';
 import { KeyFactsCompare } from '../components/KeyFactsCompare';
@@ -115,6 +115,15 @@ export function BrandCompare() {
   const offers = useMemo(() => (brand ? orderedOffers(brand) : []), [brand]);
 
   const scrollTo = useCallback((elementId: string) => scrollToId(elementId), []);
+
+  /** The full terms start folded away under the key-points table. */
+  const [termsOpen, setTermsOpen] = useState(false);
+  // The shortcut at the top opens them as well as scrolling there; a frame's
+  // wait lets the block start opening before its position is measured.
+  const openTerms = useCallback(() => {
+    setTermsOpen(true);
+    requestAnimationFrame(() => scrollToId('terms'));
+  }, []);
 
   if (!brand) {
     return (
@@ -376,7 +385,7 @@ export function BrandCompare() {
 
           <button
             type="button"
-            onClick={() => scrollTo('terms')}
+            onClick={openTerms}
             className="btn btn-glass !px-3 !text-xs sm:!px-5 sm:!text-sm"
           >
             <Icon name="chevronDown" className="h-4 w-4" />
@@ -411,7 +420,6 @@ export function BrandCompare() {
               brand={brand}
               offer={offer}
               isBest={effectiveDiscount(offer) === effectiveDiscount(best)}
-              onJumpToTerms={() => scrollTo(termsId(offer.platformId))}
               latestCheck={latestCheck}
             />
           ))}
@@ -428,22 +436,53 @@ export function BrandCompare() {
           </p>
         </div>
         <KeyFactsCompare offers={offers} />
-      </section>
 
-      {/* ---------------- Full terms ---------------- */}
-      <section id="terms" className="shell scroll-mt-28 pt-14">
-        <div className="mb-5">
-          <h2 className="text-2xl font-extrabold md:text-3xl">Terms &amp; conditions</h2>
-          <p className="text-muted mt-1.5 max-w-2xl text-sm md:text-base">
-            Grouped by site. The four key points sit at the top of every block in the same order;
-            everything else follows below.
-          </p>
-        </div>
+        {/*
+          The full fine print, folded away under the four points it expands
+          on. Most people only need the table above; the rest is one tap off.
+        */}
+        <div id="terms" className="mt-4 scroll-mt-28">
+          <button
+            type="button"
+            onClick={() => setTermsOpen((v) => !v)}
+            aria-expanded={termsOpen}
+            aria-controls="terms-body"
+            className="glass flex w-full items-center gap-3 rounded-2xl px-5 py-4 text-left"
+          >
+            <Icon
+              name="chevronDown"
+              className={`h-4 w-4 shrink-0 transition-transform duration-300 ${termsOpen ? 'rotate-180' : ''}`}
+            />
+            <span className="flex-1">
+              <span className="block text-sm font-bold">Terms &amp; conditions</span>
+              <span className="text-faint block text-xs">
+                Every seller's full terms, as published on their site
+              </span>
+            </span>
+            <span className="text-faint text-xs font-semibold">
+              {termsOpen ? 'Hide' : 'Show'}
+            </span>
+          </button>
 
-        <div className="grid gap-4">
-          {offers.map((offer) => (
-            <TermsSection key={offer.platformId} offer={offer} id={termsId(offer.platformId)} />
-          ))}
+          <AnimatePresence initial={false}>
+            {termsOpen && (
+              <motion.div
+                id="terms-body"
+                key="terms"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.35, ease: [0.45, 0, 0.25, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="grid gap-4 pt-4">
+                  {offers.map((offer) => (
+                    <TermsSection key={offer.platformId} offer={offer} id={termsId(offer.platformId)} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
     </div>

@@ -41,6 +41,19 @@ export function Navbar() {
     <header
       className={`sticky top-0 z-40 transition-[padding] duration-300 ${scrolled ? 'pt-2' : 'pt-3 md:pt-5'}`}
     >
+      {/*
+        The strip above the floating bar. Without this, the page scrolling up
+        behind it stayed readable there — text and cards peeking over the top
+        of the bar. Filled with the page's own colour once you've scrolled, and
+        faded out down the bar so there's no hard edge. Hidden at the very top,
+        where there's nothing behind it to hide.
+      */}
+      <div
+        aria-hidden
+        className={`nav-veil pointer-events-none absolute inset-0 -z-10 transition-opacity duration-300 ${
+          scrolled ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
       <div className="shell">
         <nav
           className={`glass glass-sheen flex items-center gap-2 rounded-full px-3 py-2 transition-all duration-300 md:gap-4 md:px-4 ${

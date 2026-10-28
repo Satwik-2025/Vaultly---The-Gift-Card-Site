@@ -26,8 +26,6 @@ interface SitePanelProps {
   offer: Offer;
   /** True when no other site beats this one */
   isBest: boolean;
-  /** Smooth-scrolls to this site's terms section */
-  onJumpToTerms: () => void;
   /**
    * The newest reading across all sellers on this page. An offer older than
    * that is one the last re-check couldn't refresh.
@@ -37,9 +35,9 @@ interface SitePanelProps {
 
 /**
  * One selling site's whole story: its denominations, the real payable price,
- * a link out to the seller, and a jump into its own terms block further down.
+ * a link out to the seller, and how to use the card once bought.
  */
-export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: SitePanelProps) {
+export function SitePanel({ brand, offer, isBest, latestCheck }: SitePanelProps) {
   const platform = getPlatform(offer.platformId);
   const custom = offer.customAmount;
 
@@ -678,10 +676,6 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
           </div>
         )}
 
-        <button type="button" onClick={onJumpToTerms} className="btn btn-glass w-full !text-xs">
-          <Icon name="chevronDown" className="h-3.5 w-3.5" />
-          Terms &amp; conditions
-        </button>
       </div>
     </motion.section>
   );
