@@ -1,8 +1,9 @@
 import { PlatformMark } from '../components/PlatformMark';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { TermsList } from './TermsSection';
 import { Icon, type IconName } from './Icon';
 import { effectiveDiscount, formatPct, getPlatform } from '../services/catalog';
-import { KEY_FACT_LABELS, KEY_FACT_ORDER, type FactStatus, type Offer } from '../types';
+import { KEY_FACT_LABELS, KEY_FACT_ORDER, type FactStatus, type Offer, type PlatformId } from '../types';
 import { ink } from '../lib/color';
 
 const STATUS_CLASS: Record<FactStatus, string> = {
@@ -23,8 +24,20 @@ const STATUS_DOT: Record<FactStatus, string> = {
  * The four decision-critical facts, one column per site, aligned row-by-row via
  * CSS subgrid — so "Validity" on GyFTR sits on exactly the same line as
  * "Validity" on Paytm without forcing the content into a table.
+ *
+ * Each column ends with its own "Terms & conditions" button, which opens that
+ * seller's fine print in place. Which ones are open is held by the page, so
+ * its shortcut at the top can open them all.
  */
-export function KeyFactsCompare({ offers }: { offers: Offer[] }) {
+export function KeyFactsCompare({
+  offers,
+  openTerms,
+  onToggleTerms,
+}: {
+  offers: Offer[];
+  openTerms: ReadonlySet<PlatformId>;
+  onToggleTerms: (platformId: PlatformId) => void;
+}) {
   return (
     <div className="compare-grid no-scrollbar" style={{ ['--cols' as string]: offers.length }}>
       {offers.map((offer, i) => {
@@ -80,6 +93,39 @@ export function KeyFactsCompare({ offers }: { offers: Offer[] }) {
                 </div>
               );
             })}
+
+            {/* Starts at the top of its row, so opening one column's terms
+                doesn't push the other columns' buttons down. */}
+            <div className="self-start border-t border-[var(--border)]">
+              <button
+                type="button"
+                onClick={() => onToggleTerms(offer.platformId)}
+                aria-expanded={openTerms.has(offer.platformId)}
+                className="flex w-full items-center justify-center gap-1.5 px-4 py-3 text-xs font-bold transition-colors hover:bg-[var(--surface-hover)]"
+              >
+                <Icon
+                  name="chevronDown"
+                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                    openTerms.has(offer.platformId) ? 'rotate-180' : ''
+                  }`}
+                />
+                Terms &amp; conditions
+              </button>
+              <AnimatePresence initial={false}>
+                {openTerms.has(offer.platformId) && (
+                  <motion.div
+                    key="terms"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: [0.45, 0, 0.25, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <TermsList offer={offer} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         );
       })}

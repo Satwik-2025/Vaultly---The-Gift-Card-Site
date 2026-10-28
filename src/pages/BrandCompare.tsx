@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Icon } from '../components/Icon';
 import { SitePanel } from '../components/SitePanel';
 import { KeyFactsCompare } from '../components/KeyFactsCompare';
-import { TermsSection } from '../components/TermsSection';
 import { BrandMark } from '../components/BrandMark';
 import { CashKaroCard } from '../components/CashKaroCard';
 import {
@@ -24,7 +23,6 @@ import { useSaved } from '../hooks/useApp';
 import { scrollToId } from '../lib/scroll';
 import { readPrefs } from '../lib/prefs';
 
-const termsId = (platformId: PlatformId) => `terms-${platformId}`;
 
 /** How stale the data must be before opening a brand page re-reads the sellers. */
 const AUTO_RECHECK_AFTER_MS = 5 * 60 * 1000;
@@ -116,14 +114,24 @@ export function BrandCompare() {
 
   const scrollTo = useCallback((elementId: string) => scrollToId(elementId), []);
 
-  /** The full terms start folded away under the key-points table. */
-  const [termsOpen, setTermsOpen] = useState(false);
-  // The shortcut at the top opens them as well as scrolling there; a frame's
-  // wait lets the block start opening before its position is measured.
-  const openTerms = useCallback(() => {
-    setTermsOpen(true);
-    requestAnimationFrame(() => scrollToId('terms'));
+  /**
+    Which sellers' terms are open, under their columns in the key-points
+    comparison. All folded to start with.
+  */
+  const [openTerms, setOpenTerms] = useState<ReadonlySet<PlatformId>>(() => new Set());
+  const toggleTerms = useCallback((platformId: PlatformId) => {
+    setOpenTerms((open) => {
+      const next = new Set(open);
+      if (next.has(platformId)) next.delete(platformId);
+      else next.add(platformId);
+      return next;
+    });
   }, []);
+  // The shortcut at the top opens every seller's terms and scrolls to them.
+  const showAllTerms = useCallback(() => {
+    setOpenTerms(new Set(offers.map((o) => o.platformId)));
+    requestAnimationFrame(() => scrollToId('key-facts'));
+  }, [offers]);
 
   if (!brand) {
     return (
@@ -385,7 +393,7 @@ export function BrandCompare() {
 
           <button
             type="button"
-            onClick={openTerms}
+            onClick={showAllTerms}
             className="btn btn-glass !px-3 !text-xs sm:!px-5 sm:!text-sm"
           >
             <Icon name="chevronDown" className="h-4 w-4" />
@@ -435,55 +443,7 @@ export function BrandCompare() {
             instead of hunting through fine print.
           </p>
         </div>
-        <KeyFactsCompare offers={offers} />
-
-        {/*
-          The full fine print, folded away under the four points it expands
-          on. Most people only need the table above; the rest is one tap off.
-        */}
-        <div id="terms" className="mt-4 scroll-mt-28">
-          <button
-            type="button"
-            onClick={() => setTermsOpen((v) => !v)}
-            aria-expanded={termsOpen}
-            aria-controls="terms-body"
-            className="glass flex w-full items-center gap-3 rounded-2xl px-5 py-4 text-left"
-          >
-            <Icon
-              name="chevronDown"
-              className={`h-4 w-4 shrink-0 transition-transform duration-300 ${termsOpen ? 'rotate-180' : ''}`}
-            />
-            <span className="flex-1">
-              <span className="block text-sm font-bold">Terms &amp; conditions</span>
-              <span className="text-faint block text-xs">
-                Every seller's full terms, as published on their site
-              </span>
-            </span>
-            <span className="text-faint text-xs font-semibold">
-              {termsOpen ? 'Hide' : 'Show'}
-            </span>
-          </button>
-
-          <AnimatePresence initial={false}>
-            {termsOpen && (
-              <motion.div
-                id="terms-body"
-                key="terms"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.35, ease: [0.45, 0, 0.25, 1] }}
-                className="overflow-hidden"
-              >
-                <div className="grid gap-4 pt-4">
-                  {offers.map((offer) => (
-                    <TermsSection key={offer.platformId} offer={offer} id={termsId(offer.platformId)} />
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <KeyFactsCompare offers={offers} openTerms={openTerms} onToggleTerms={toggleTerms} />
       </section>
     </div>
   );

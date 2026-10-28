@@ -601,14 +601,15 @@
   @media (min-width: 900px) {
     .compare-grid {
       grid-template-columns: repeat(var(--cols, 3), minmax(16.5rem, 1fr));
-      grid-template-rows: auto repeat(4, auto);
+      /* Header, the four points, then the terms button. */
+      grid-template-rows: auto repeat(4, auto) auto;
       overflow-x: auto;
       overscroll-behavior-x: contain;
       padding-bottom: 0.5rem;
     }
     .compare-col {
       display: grid;
-      grid-row: span 5;
+      grid-row: span 6;
       grid-template-rows: subgrid;
     }
   }
