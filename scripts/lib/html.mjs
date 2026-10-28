@@ -175,6 +175,9 @@ export function brandKey(name) {
     // Strip apostrophes rather than treating them as separators, so
     // "DOMINO'S" becomes "dominos" and merges with other sellers' spelling.
     .replace(/['’`]/g, '')
+    // Woohoo's "AJIO E-Gift Card - Get Extra" is the same brand with a bonus
+    // offer, not a brand called "Ajio Get Extra".
+    .replace(/\bget\s+(\d+(\.\d+)?\s*%\s*)?extra\b/g, ' ')
     .replace(/&/g, ' and ')
     .replace(
       /\b(e[- ]?gift|gift|instant|digital|online|top[- ]?up|egv|gv|voucher|vouchers|card|cards|pay)\b/g,
@@ -190,6 +193,7 @@ export function cleanBrandName(name) {
   const s = decodeEntities(name)
     .replace(/\s*[-|]\s*(e[- ]?gift|gift)\s*(card|voucher)s?.*$/i, '')
     .replace(/\b(e[- ]?gift\s*(card|voucher)s?|instant\s*vouchers?|gift\s*(card|voucher)s?)\b/gi, '')
+    .replace(/\s*[-|]?\s*\bget\s+(\d+(\.\d+)?\s*%\s*)?extra\b/gi, '')
     .replace(/\s{2,}/g, ' ')
     // "Zee5 Tamil 12M E-Gift Card" leaves a dangling "E" once the suffix goes.
     .replace(/\s+[A-Za-z]$/, '')

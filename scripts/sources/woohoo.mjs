@@ -82,13 +82,15 @@ function productState(html) {
 function discountFrom(product) {
   const desc = String(product.offerShortDesc ?? '');
   const m = desc.match(/(\d{1,2}(?:\.\d{1,2})?)\s*%/);
-  if (!m) return 0;
+  if (!m) return { discountPct: 0, bonusPct: 0 };
   const pct = Number(m[1]);
   // "Get 8% Extra" is bonus value, not money off: ₹1,000 buys a ₹1,080 card.
-  // As a discount on the card's value that's 8/108 = 7.4%, which is what the
-  // comparison needs — taking it as 8% off overstated it.
-  if (/extra/i.test(desc)) return Math.round((pct / (100 + pct)) * 1000) / 10;
-  return pct;
+  // As a discount on the card's value that's 8/108 = 7.4% — the figure the
+  // comparison ranks by. The 8% is kept too, so the page can say it as Woohoo does.
+  if (/extra/i.test(desc)) {
+    return { discountPct: Math.round((pct / (100 + pct)) * 1000) / 10, bonusPct: pct };
+  }
+  return { discountPct: pct, bonusPct: 0 };
 }
 
 /**
@@ -149,7 +151,8 @@ export async function fetchBrand({ slug, url }) {
   const giftOnly = Array.isArray(product.orderModes) && !product.orderModes.includes('self');
 
   const price = product.price ?? {};
-  const discountPct = discountFrom(product);
+  const { discountPct, bonusPct } = discountFrom(product);
+  const bonus = bonusPct ? { bonusPct } : {};
 
   const listed = (price.denominations ?? [])
     .map(Number)
@@ -169,7 +172,12 @@ export async function fetchBrand({ slug, url }) {
   const description = htmlToText(product.shortDescription ?? product.description ?? '');
 
   const name = cleanBrandName(product.name);
-  const paymentOffers = paymentOffersFrom(product);
+  // A "Get Extra" card repeats its bonus as a campaign ("Get 8% extra on your
+  // order value"). That's the same 8%, not a second saving on top — listed
+  // again it read as "up to 8% off by payment method".
+  const paymentOffers = paymentOffersFrom(product).filter(
+    (p) => !(bonusPct && /extra/i.test(p.name)),
+  );
 
   return {
     key: brandKey(product.name),
@@ -185,9 +193,10 @@ export async function fetchBrand({ slug, url }) {
       slug,
       ...(giftOnly ? { giftOnly: true } : {}),
       headlineDiscountPct: discountPct,
-      denominations: isRange ? [] : listed.map((value) => ({ value, discountPct })),
+      ...bonus,
+      denominations: isRange ? [] : listed.map((value) => ({ value, discountPct, ...bonus })),
       // An open-value card: the buyer types any amount within these bounds.
-      customAmount: isRange ? { min, max, discountPct, sourceUrl: url } : null,
+      customAmount: isRange ? { min, max, discountPct, ...bonus, sourceUrl: url } : null,
       keyFacts: deriveKeyFacts([terms]),
       otherTerms: htmlToBullets(product.importantInstructions),
       paymentOffers,

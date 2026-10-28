@@ -81,13 +81,27 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
             : null;
 
   const denom = usingCustom
-    ? { value: typedAmount, discountPct: custom!.discountPct, label: null }
+    ? {
+        value: typedAmount,
+        discountPct: custom!.discountPct,
+        bonusPct: custom!.bonusPct,
+        label: null,
+      }
     : (offer.denominations.find((d) => denomKey(d) === selected) ?? defaultDenom);
 
   const amount = denom?.value ?? 0;
   const discountPct = denom?.discountPct ?? 0;
   const pay = payable(amount, discountPct);
   const save = savings(amount, discountPct);
+
+  /*
+    "Get 8% Extra" works the other way round from a discount: the amount is
+    what you pay, and the card comes out bigger. Shown the way Woohoo sells it,
+    with the equivalent discount alongside so it still compares with the rest.
+  */
+  const bonusPct = denom?.bonusPct ?? 0;
+  const bonusValue = Math.round((amount * bonusPct) / 100);
+  const cardWithBonus = amount + bonusValue;
 
   /*
     How old this seller's number is, and whether the last re-check actually
@@ -169,13 +183,25 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
         <div className="mt-4 flex items-end justify-between gap-3">
           <div>
             <p className="text-faint text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
-              {offer.headlineDiscountPct > 0 || bestPaymentPct === 0 ? 'Up to' : 'Best price with'}
+              {offer.bonusPct
+                ? 'Get'
+                : offer.headlineDiscountPct > 0 || bestPaymentPct === 0
+                  ? 'Up to'
+                  : 'Best price with'}
             </p>
             <p
               className="font-display text-3xl leading-none font-extrabold"
               style={{ color: ink(platform.accent) }}
             >
-              {offer.headlineDiscountPct > 0 ? (
+              {offer.bonusPct ? (
+                <>
+                  {formatPct(offer.bonusPct)}%
+                  <span className="text-muted ml-1 text-sm font-bold">extra</span>
+                  <span className="chip ml-2 !px-2 !py-0.5 align-middle !text-[0.62rem] font-bold">
+                    ≈ {formatPct(offer.headlineDiscountPct)}% off overall
+                  </span>
+                </>
+              ) : offer.headlineDiscountPct > 0 ? (
                 <>
                   {formatPct(offer.headlineDiscountPct)}%
                   <span className="text-muted ml-1 text-sm font-bold">off</span>
@@ -210,12 +236,24 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
             )}
           </div>
         </div>
+
+        {offer.bonusPct ? (
+          <p className="text-muted mt-3 text-[0.72rem] leading-relaxed">
+            {platform.name} doesn’t cut the price, it adds value: pay {formatINR(1000)}, get a{' '}
+            {formatINR(1000 + offer.bonusPct * 10)} card. That works out to about{' '}
+            {formatPct(offer.headlineDiscountPct)}% off.
+          </p>
+        ) : null}
       </header>
 
       {/* ---- Denominations ---- */}
       <div className="relative px-5 pb-4">
         <p className="text-faint mb-2 text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
-          {custom ? 'Enter any amount' : `Available denominations (${offer.denominations.length})`}
+          {custom
+            ? custom.bonusPct
+              ? 'Enter the amount you pay'
+              : 'Enter any amount'
+            : `Available denominations (${offer.denominations.length})`}
         </p>
 
         {custom && (
@@ -321,7 +359,11 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
                         className="text-muted block text-[0.68rem] font-semibold tabular-nums"
                         style={active ? { color: ink(platform.accent) } : undefined}
                       >
-                        {d.discountPct > 0 ? `−${formatPct(d.discountPct)}%` : '—'}
+                        {d.bonusPct
+                          ? `+${formatPct(d.bonusPct)}% extra`
+                          : d.discountPct > 0
+                            ? `−${formatPct(d.discountPct)}%`
+                            : '—'}
                       </span>
                     )}
                   </button>
@@ -366,30 +408,70 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
 
       {/* ---- Price breakdown, exactly as sketched: face → discount → you pay ---- */}
       <div className="relative mx-5 mb-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <div className="text-muted flex items-center justify-between text-sm">
-          <span>Card value</span>
-          <span className="tabular-nums">{formatINR(amount)}</span>
-        </div>
-        <div className="mt-1.5 flex items-center justify-between text-sm">
-          <span className="text-muted">Discount ({formatPct(discountPct)}%)</span>
-          <span className="font-semibold tabular-nums text-[var(--ok)]">−{formatINR(save)}</span>
-        </div>
-        <div className="my-3 h-px bg-[var(--border)]" />
-        <div className="flex items-end justify-between">
-          <span className="text-[0.7rem] font-semibold tracking-[0.14em] uppercase">You pay</span>
-          <AnimatePresence mode="popLayout">
-            <motion.span
-              key={pay}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.18 }}
-              className="font-display text-2xl leading-none font-extrabold tabular-nums"
-            >
-              {formatINR(pay)}
-            </motion.span>
-          </AnimatePresence>
-        </div>
+        {bonusPct > 0 ? (
+          <>
+            <div className="text-muted flex items-center justify-between text-sm">
+              <span>You pay</span>
+              <span className="tabular-nums">{formatINR(amount)}</span>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between text-sm">
+              <span className="text-muted">
+                {platform.name} adds {formatPct(bonusPct)}% extra
+              </span>
+              <span className="font-semibold tabular-nums text-[var(--ok)]">
+                +{formatINR(bonusValue)}
+              </span>
+            </div>
+            <div className="my-3 h-px bg-[var(--border)]" />
+            <div className="flex items-end justify-between">
+              <span className="text-[0.7rem] font-semibold tracking-[0.14em] uppercase">
+                Card you get
+              </span>
+              <AnimatePresence mode="popLayout">
+                <motion.span
+                  key={cardWithBonus}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18 }}
+                  className="font-display text-2xl leading-none font-extrabold tabular-nums"
+                >
+                  {formatINR(cardWithBonus)}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+            <p className="text-faint mt-2 text-right text-[0.68rem]">
+              Same as ≈ {formatPct(discountPct)}% off a {formatINR(cardWithBonus)} card
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="text-muted flex items-center justify-between text-sm">
+              <span>Card value</span>
+              <span className="tabular-nums">{formatINR(amount)}</span>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between text-sm">
+              <span className="text-muted">Discount ({formatPct(discountPct)}%)</span>
+              <span className="font-semibold tabular-nums text-[var(--ok)]">−{formatINR(save)}</span>
+            </div>
+            <div className="my-3 h-px bg-[var(--border)]" />
+            <div className="flex items-end justify-between">
+              <span className="text-[0.7rem] font-semibold tracking-[0.14em] uppercase">You pay</span>
+              <AnimatePresence mode="popLayout">
+                <motion.span
+                  key={pay}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18 }}
+                  className="font-display text-2xl leading-none font-extrabold tabular-nums"
+                >
+                  {formatINR(pay)}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ---- Actions ---- */}
@@ -421,7 +503,9 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
               ? customError.split('—')[0].trim()
               : denom?.label
                 ? `Buy ${denom.label} on ${platform.name}`
-                : `Buy ${formatINR(amount)} card on ${platform.name}`}
+                : bonusPct > 0
+                  ? `Pay ${formatINR(amount)}, get ${formatINR(cardWithBonus)} on ${platform.name}`
+                  : `Buy ${formatINR(amount)} card on ${platform.name}`}
         </a>
 
         {missedLastCheck ? (

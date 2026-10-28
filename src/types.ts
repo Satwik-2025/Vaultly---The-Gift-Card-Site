@@ -56,6 +56,8 @@ export interface KeyFacts {
 export interface Denomination {
   value: number;
   discountPct: number;
+  /** Bonus value instead of money off — see `Offer.bonusPct`. */
+  bonusPct?: number;
   /**
    * Set when the seller sells named packs rather than plain amounts —
    * e.g. Zee5's "Premium HD Annual Pack".
@@ -75,6 +77,8 @@ export interface CustomAmount {
   min: number;
   max: number;
   discountPct: number;
+  /** Bonus value instead of money off — see `Offer.bonusPct`. */
+  bonusPct?: number;
   /** The listing that sells any amount, when the offer merges several. */
   sourceUrl?: string | null;
 }
@@ -95,6 +99,13 @@ export interface Offer {
   productUrl: string;
   slug: string;
   headlineDiscountPct: number;
+  /**
+   * Set when the seller adds value instead of cutting the price: Woohoo's
+   * "Get 8% Extra" means pay ₹1,000, get a ₹1,080 card. `headlineDiscountPct`
+   * then holds the equivalent discount (8/108 = 7.4%) so it ranks fairly
+   * against the other sellers.
+   */
+  bonusPct?: number;
   /** Fixed slabs. Empty when the card is open-value — see `customAmount`. */
   denominations: Denomination[];
   /** Non-null when the buyer may enter any amount between min and max. */
