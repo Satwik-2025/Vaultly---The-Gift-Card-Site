@@ -485,7 +485,7 @@ export function Settings() {
           description="Questions about a card you bought go to the seller — they hold the order."
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <a href="#contact" className="glass rounded-2xl p-4 transition-colors hover:bg-[var(--surface-hover)]">
+            <a href="mailto:satwikgupta2005@gmail.com" className="glass rounded-2xl p-4 transition-colors hover:bg-[var(--surface-hover)]">
               <p className="text-sm font-bold">Contact us</p>
               <p className="text-muted mt-1 text-xs leading-relaxed">
                 Something wrong with a price or a listing on Vaultly.

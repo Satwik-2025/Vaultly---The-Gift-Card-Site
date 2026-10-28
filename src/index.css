@@ -598,6 +598,13 @@
     gap: 1rem;
     grid-template-columns: 1fr;
   }
+  /* No drop shadow on these cards. On wide screens the row scrolls
+     sideways, and a scroll box clips whatever spills past its edge — the
+     shadow under the cards was cut off flat, leaving a band beneath their
+     rounded corners. */
+  .compare-col {
+    box-shadow: none;
+  }
   @media (min-width: 900px) {
     .compare-grid {
       grid-template-columns: repeat(var(--cols, 3), minmax(16.5rem, 1fr));
@@ -605,7 +612,6 @@
       grid-template-rows: auto repeat(4, auto) auto;
       overflow-x: auto;
       overscroll-behavior-x: contain;
-      padding-bottom: 0.5rem;
     }
     .compare-col {
       display: grid;
