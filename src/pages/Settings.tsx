@@ -7,6 +7,7 @@ import { BrandMark } from '../components/BrandMark';
 import { bestDiscount, formatPct, getBrand } from '../services/catalog';
 import type { Theme } from '../themes';
 import { scrollToId } from '../lib/scroll';
+import { PREFS_KEY, readPrefs, type Prefs } from '../lib/prefs';
 
 /**
  * Settings, with Appearance first because it's the one people actually come
@@ -14,29 +15,6 @@ import { scrollToId } from '../lib/scroll';
  * straight to it.
  */
 
-const PREFS_KEY = 'vaultly:prefs';
-
-interface Prefs {
-  priceDrops: boolean;
-  newCards: boolean;
-  weekly: boolean;
-  autoRecheck: boolean;
-}
-
-const DEFAULT_PREFS: Prefs = {
-  priceDrops: true,
-  newCards: true,
-  weekly: false,
-  autoRecheck: true,
-};
-
-const readPrefs = (): Prefs => {
-  try {
-    return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') };
-  } catch {
-    return DEFAULT_PREFS;
-  }
-};
 
 function Section({
   id,
@@ -422,7 +400,7 @@ export function Settings() {
               checked={prefs.autoRecheck}
               onChange={setPref('autoRecheck')}
               label="Re-check prices automatically"
-              hint="Re-read a brand's live prices when you open its page."
+              hint="Re-read a brand's live prices when you open its page. Off, pages show the last saved prices until you press Re-check."
             />
           </div>
         </Section>

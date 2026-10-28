@@ -21,6 +21,7 @@ import type { Brand, PlatformId } from '../types';
 import type { RefreshChanges } from '../services/catalog';
 import { useSaved } from '../hooks/useApp';
 import { scrollToId } from '../lib/scroll';
+import { readPrefs } from '../lib/prefs';
 
 const termsId = (platformId: PlatformId) => `terms-${platformId}`;
 
@@ -76,10 +77,11 @@ export function BrandCompare() {
    * prices, denominations and terms on screen are the ones live right now.
    *
    * Skipped when the data was already refreshed in the last few minutes —
-   * opening the same card repeatedly shouldn't hammer the sellers.
+   * opening the same card repeatedly shouldn't hammer the sellers — and when
+   * it's switched off in Settings. The Re-check button works either way.
    */
   useEffect(() => {
-    if (!brandId) return;
+    if (!brandId || !readPrefs().autoRecheck) return;
     const current = getBrand(brandId);
     if (!current) return;
 
