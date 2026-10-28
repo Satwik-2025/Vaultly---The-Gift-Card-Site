@@ -251,7 +251,13 @@ export async function fetchBrand({ slug, url }) {
       denominations: isRange ? [] : listed.map((value) => ({ value, discountPct, ...bonus })),
       // An open-value card: the buyer types any amount within these bounds.
       customAmount: isRange ? { min, max, discountPct, ...bonus, sourceUrl: url } : null,
-      keyFacts: deriveKeyFacts([expiry ? `Validity: ${expiry}.` : '', terms, fullTerms.join('\n')]),
+      // The whole T&C text, not the bullet list: that list skips short or
+      // boilerplate-looking lines, and a rule can live in any of them.
+      keyFacts: deriveKeyFacts([
+        expiry ? `Validity: ${expiry}.` : '',
+        terms,
+        htmlToText(product.tnc?.content ?? ''),
+      ]),
       howToUse: howToUseFrom(product),
       otherTerms: [...new Set([...htmlToBullets(product.importantInstructions), ...fullTerms])],
       paymentOffers,

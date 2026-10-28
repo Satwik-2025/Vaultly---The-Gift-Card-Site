@@ -189,7 +189,7 @@ export function htmlToBullets(html) {
         seen.add(key);
         return true;
       })
-      .slice(0, 16)
+      .slice(0, 60)
   );
 }
 

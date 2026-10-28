@@ -169,10 +169,11 @@ export async function fetchBrand({ slug, url }) {
   // The instructions come first: they're GyFTR's own summary, and where the
   // fine print disagrees with them (Air India's T&C still says "can be
   // combined with any offer") the summary is what the shop enforces.
+  // Full texts rather than the bullet lists, which skip short lines.
   const keyFacts = deriveKeyFacts([
-    instructions.join('\n'),
-    checkout.join('\n'),
-    fullTerms.join('\n'),
+    htmlToText(live?.product_brand_instruct || detail.important_instruction),
+    htmlToText(detail.checkout_instruction),
+    htmlToText(String(live?.product_brand_term_cond ?? '').replace(/<br\s*\/?>/gi, '\n')),
     faqText,
     htmlToText(detail.long_description),
   ]);

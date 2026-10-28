@@ -37,7 +37,38 @@ function findFirst(sents, rules) {
 }
 
 // --- 1. Multiple cards in a single transaction -------------------------------
+/**
+ * Several cards are allowed, but only by first pooling them somewhere — not
+ * by entering them one after another at checkout. Worth saying, because it's
+ * an extra step a buyer wouldn't expect.
+ *
+ * `where` is the seller's own name for it, e.g. "Air India Wallet".
+ */
+const viaPool = (where) => {
+  const bare = where.replace(/^(?:the|your|a)\s+/i, '').trim();
+  // "e-Pay balance" is GyFTR's own wallet; say whose.
+  const name = /^e-?pay\b/i.test(bare) ? `GyFTR ${bare}` : bare;
+  return {
+    status: 'good',
+    headline: `Multiple cards · via ${name}`,
+    detail: `Several cards can be used in one order, but first add them all to your ${name} — you then pay from that balance, rather than entering each card at checkout.`,
+  };
+};
+
 const STACKING_RULES = [
+  {
+    // Woohoo, Air India Ancillary: "To use multiple Ancillary Gift Cards in a
+    // single transaction, add all Gift Cards to the Air India Wallet."
+    // GyFTR, Air India: "To use multiple GV/GCs at once, add them to your Air
+    // India Wallet".
+    re: /\bto\s+use\s+multiple\b[^.]{0,60}?\b(?:single|one|same|at\s+once|together)\b[^.]{0,30}?\b(?:add|load|transfer)\b[^.]{0,30}?\bto\s+((?:the\s+|your\s+)?[a-z][\w&' -]{1,40}?\b(?:wallet|balance|account))\b/i,
+    build: (m) => viaPool(m[1]),
+  },
+  {
+    // GyFTR: "Multiple Gift Vouchers CAN be combined & added to e-Pay balance."
+    re: /multiple[^.]{0,60}?(?:gift\s*cards?|vouchers?|gvs?|egvs?)[^.]{0,60}?\bcombined\b\s*(?:&|and)\s*added\s+to\s+((?:the\s+|your\s+|a\s+)?[a-z][\w&' -]{1,30}?\b(?:wallet|balance|account|credits?))\b/i,
+    build: (m) => viaPool(m[1]),
+  },
   {
     // "Multiple gift cards can be combined and added to the ePay balance"
     re: /multiple[^.]{0,60}?(?:gift\s*cards?|vouchers?|gvs?|egvs?)[^.]{0,60}?(?:can\s+be\s+)?combined/i,
