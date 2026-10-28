@@ -37,7 +37,12 @@ const PAGE_BUDGET = { amazon: 6 };
  * unioned across all of them. Keyed on value *and* label because four Zee5
  * packs all cost ₹699 and are different products.
  */
-function mergeFetched(fetched, checkedAt) {
+function mergeFetched(allFetched, checkedAt) {
+  // Same rule as the scrape's preferOffer: gift-only listings only count when
+  // the brand has nothing else on this seller.
+  const fetched = allFetched.some((f) => !f.fresh.giftOnly)
+    ? allFetched.filter((f) => !f.fresh.giftOnly)
+    : allFetched;
   const byValue = new Map();
   for (const { source, fresh } of fetched) {
     for (const d of fresh.denominations) {

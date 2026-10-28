@@ -102,6 +102,10 @@ export const keywordsFor = (name, description, category) =>
  * richer listing supplies the terms.
  */
 export function preferOffer(a, b) {
+  // A gift-only listing never outranks the brand's normal card, or lends it
+  // slabs: its figures aren't what a shopper buying for themselves gets.
+  if (Boolean(a.giftOnly) !== Boolean(b.giftOnly)) return a.giftOnly ? b : a;
+
   const facts = (o) => Object.values(o.keyFacts).filter((f) => f.status !== 'unknown').length;
 
   const primary =

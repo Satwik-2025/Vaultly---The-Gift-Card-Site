@@ -75,6 +75,8 @@ export interface CustomAmount {
   min: number;
   max: number;
   discountPct: number;
+  /** The listing that sells any amount, when the offer merges several. */
+  sourceUrl?: string | null;
 }
 
 export interface PaymentOffer {

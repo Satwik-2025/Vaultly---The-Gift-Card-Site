@@ -132,6 +132,15 @@ export async function fetchBrand({ slug, url }) {
   const product = productState(body);
   if (!product?.name) return null;
 
+  /*
+    Gift-only listings ("Personalize", no "For Myself") are flagged so a merge
+    can leave them out when the brand has a normal card too. They can carry an
+    `offerShortDesc` the page never shows — Ajio's ₹100 gift voucher says "25%
+    Discount" in the data while its page offers none — and merged in, that
+    became Ajio's headline figure and its page the buy link.
+  */
+  const giftOnly = Array.isArray(product.orderModes) && !product.orderModes.includes('self');
+
   const price = product.price ?? {};
   const discountPct = discountFrom(product);
 
@@ -167,10 +176,11 @@ export async function fetchBrand({ slug, url }) {
       platformId: PLATFORM.id,
       productUrl: url,
       slug,
+      ...(giftOnly ? { giftOnly: true } : {}),
       headlineDiscountPct: discountPct,
       denominations: isRange ? [] : listed.map((value) => ({ value, discountPct })),
       // An open-value card: the buyer types any amount within these bounds.
-      customAmount: isRange ? { min, max, discountPct } : null,
+      customAmount: isRange ? { min, max, discountPct, sourceUrl: url } : null,
       keyFacts: deriveKeyFacts([terms]),
       otherTerms: htmlToBullets(product.importantInstructions),
       paymentOffers,

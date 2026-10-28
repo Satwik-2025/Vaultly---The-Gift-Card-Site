@@ -126,6 +126,9 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
     // slab to the first source, because both of Woohoo's listings have no label.
     denom?.sourceUrl ||
     (denom?.label && offer.sources?.find((s) => s.label === denom.label)?.url) ||
+    // A typed amount belongs to the open-value listing, not to whichever
+    // listing happened to supply the headline.
+    (usingCustom && offer.customAmount?.sourceUrl) ||
     offer.productUrl;
 
   return (
