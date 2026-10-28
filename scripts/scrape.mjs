@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mapPool } from './lib/http.mjs';
 import { merge } from './lib/build.mjs';
-import { fillUnknownFacts } from './lib/facts.mjs';
+import { refreshFactsFromTerms } from './lib/facts.mjs';
 import * as gyftr from './sources/gyftr.mjs';
 import * as woohoo from './sources/woohoo.mjs';
 import * as amazon from './sources/amazon.mjs';
@@ -145,7 +145,7 @@ if (isPartialRun && existsSync(OUT)) {
           (narrowRun && !freshIds.has(b.id)
             ? b.offers
             : b.offers.filter((o) => !refreshedPlatformIds.has(o.platformId))
-          ).map(fillUnknownFacts),
+          ).map(refreshFactsFromTerms),
       },
     ]),
   );

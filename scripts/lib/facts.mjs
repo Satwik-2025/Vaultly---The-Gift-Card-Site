@@ -73,7 +73,7 @@ const STACKING_RULES = [
   },
   {
     // "Multiple GVs cannot be used in one bill/transaction"
-    re: /multiple[^.]{0,60}?\b(?:can\s*not|cannot|can't|shall not|may not)\b[^.]{0,60}?\b(?:one|single|same)\b[^.]{0,30}?\b(?:bill|transaction|order|purchase)/i,
+    re: /multiple[^.]{0,60}?\b(?:can\s*not|cannot|can't|shall not|may not)\b[^.]{0,60}?\b(?:one|single|same)\b[^.]{0,30}?\b(?:bill|transaction|order|purchase|invoice|booking)/i,
     build: () => ({
       status: 'bad',
       headline: 'One card per transaction',
@@ -81,8 +81,9 @@ const STACKING_RULES = [
     }),
   },
   {
-    // "up to 5 gift vouchers can be used"
-    re: /\b(?:up\s*to|maximum\s*(?:of)?|max(?:imum)?|only)\s*(\d{1,2})\s*(?:gvs?|egvs?|gift\s*(?:vouchers?|cards?)|vouchers?|cards?)/i,
+    // "up to 5 gift vouchers can be used", "Upto 5 E-Gift Card", "Only 5 Croma
+    // EGV" — a brand name can sit between the number and the card.
+    re: /\b(?:up\s*to|maximum\s*(?:of)?|max(?:imum)?|only)\s*(\d{1,2})\s*(?:[a-z&']+\s+){0,2}?(?:gvs?|egvs?|gcs?|e[-‑]?gift\s*(?:cards?|vouchers?)?|gift\s*(?:vouchers?|cards?)|vouchers?|cards?)\b/i,
     build: (m) => {
       const n = Number(m[1]);
       if (n <= 1) {
@@ -103,8 +104,27 @@ const STACKING_RULES = [
     },
   },
   {
+    // "User cannot club more than 1 Gift Card in one order", "1 gift card to be
+    // redeemed against 1 bill only", "a limit of 1 gift card per day".
+    re: /\b(?:can\s*not|cannot|can't)\s+(?:club|combine|use|apply)\s+more\s+than\s+1\b|\b1\s+(?:e[-‑]?)?(?:gift\s*)?(?:cards?|vouchers?|gvs?|egvs?)\b[^.]{0,40}?\bagainst\s+(?:1|one|a\s+single)\s+(?:bill|transaction|order|purchase|invoice|booking)|\blimit\s+of\s+1\s+(?:e[-‑]?)?(?:gift\s*)?(?:cards?|vouchers?)/i,
+    build: () => ({
+      status: 'bad',
+      headline: 'One card per transaction',
+      detail: 'Only a single voucher can be applied per order — leftover cards wait for another purchase.',
+    }),
+  },
+  {
+    // "More than one GV / GC can be used in one bill"
+    re: /\bmore\s+than\s+1\b[^.]{0,30}?\b(?:can|may)\b[^.]{0,40}?\b(?:one|single|same|a)\b[^.]{0,20}?\b(?:bill|transaction|order|purchase|invoice|booking)/i,
+    build: () => ({
+      status: 'good',
+      headline: 'Multiple cards allowed',
+      detail: 'Several vouchers can be combined in a single transaction.',
+    }),
+  },
+  {
     // "Multiple vouchers can be used in one transaction"
-    re: /multiple[^.]{0,60}?\bcan\b[^.]{0,60}?\b(?:one|single|same)\b[^.]{0,30}?\b(?:bill|transaction|order|purchase)/i,
+    re: /multiple[^.]{0,60}?\b(?:can|may)\b[^.]{0,60}?\b(?:one|single|same)\b[^.]{0,30}?\b(?:bill|transaction|order|purchase|invoice|booking)/i,
     build: () => ({
       status: 'good',
       headline: 'Multiple cards allowed',
@@ -124,7 +144,29 @@ const STACKING_RULES = [
 // --- 2. Clubbing with existing offers ---------------------------------------
 const CLUBBING_RULES = [
   {
-    re: /\b(?:can\s*not|cannot|can't|shall not|may not|not)\b[^.]{0,60}?\b(?:combined|clubbed|used in conjunction)\b[^.]{0,50}?\b(?:offers?|promotions?|discounts?|coupons?|sales?)/i,
+    // "Gift Vouchers CANNOT be used to buy discounted merchandise" (about 50
+    // GyFTR cards), "Gift cards CANNOT be used during Sale on discounted products".
+    re: /\b(?:can\s*not|cannot|can't|not)\b[^.]{0,20}?\bbe\s+used\b[^.]{0,40}?\b(?:discounted|sale)\b/i,
+    build: () => ({
+      status: 'bad',
+      headline: 'Not valid on discounted items',
+      detail: 'Excluded from sale-priced products and promotional pricing.',
+    }),
+  },
+  {
+    // "Different Offers/vouchers cannot be combined", "No other offers,
+    // discounts, promotions … are valid with this deal", "Clubbing and
+    // Partial Redemption are not allowed".
+    re: /\boffers?\b[^.]{0,30}?\b(?:can\s*not|cannot|can't)\s+be\s+(?:combined|club(?:bed)?)\b|\bno\s+other\s+(?:offers?|discounts?|promotions?)\b[^.]{0,60}?\bvalid\b|\bclubbing\b[^.]{0,40}?\b(?:not\s+(?:allowed|permitted)|is\s+not\b)/i,
+    build: () => ({
+      status: 'bad',
+      headline: 'Cannot be clubbed with offers',
+      detail: 'Using this voucher blocks other coupons and promotional pricing on the same order.',
+    }),
+  },
+  {
+    // "club" as well as "clubbed": "This voucher cannot be club with any other offers".
+    re: /\b(?:can\s*not|cannot|can't|shall not|may not|not)\b[^.]{0,60}?\b(?:combined|club(?:bed)?|used in conjunction)\b[^.]{0,50}?\b(?:offers?|promotions?|discounts?|coupons?|sales?)/i,
     build: () => ({
       status: 'bad',
       headline: 'Cannot be clubbed with offers',
@@ -138,6 +180,16 @@ const CLUBBING_RULES = [
       status: 'good',
       headline: 'Stacks with existing offers',
       detail: 'Can be combined with running discounts, sales and promotions.',
+    }),
+  },
+  {
+    // "Gift Voucher/e-Pay CAN be used during the Sale", "Redeemable during End
+    // of Season Sales, Promotions & Offers".
+    re: /\b(?:can|may)\s+be\s+used\s+during\s+(?:the\s+)?(?:end\s+of\s+season\s+)?sales?\b|\bredeemable\s+during\b[^.]{0,30}?\bsales?\b/i,
+    build: () => ({
+      status: 'good',
+      headline: 'Works during sales',
+      detail: 'Can be spent on sale and promotional pricing.',
     }),
   },
   {
@@ -226,6 +278,15 @@ const VALIDITY_RULES = [
     }),
   },
   {
+    // "Gift Cards are valid until the date mentioned on the Gift Cards"
+    re: /\bvalid\s+(?:until|till|up\s*to)\s+the\s+(?:expiry\s+)?date\s+(?:mentioned|printed|stated|given)\b/i,
+    build: () => ({
+      status: 'limited',
+      headline: 'Varies — printed on the voucher',
+      detail: 'No fixed period is published; the expiry date is on the card itself.',
+    }),
+  },
+  {
     // Seller defers to the voucher itself.
     re: /\b(?:validity|expiry|expiration)\b[^.]{0,70}?\b(?:mentioned|printed|specified|indicated|displayed|as per)\b/i,
     build: () => ({
@@ -267,6 +328,29 @@ const PARTIAL_GLOBAL_RULES = [
 ];
 
 const PARTIAL_RULES = [
+  {
+    // "This e-Gift card is allowed for one-time redemption only", "If the value
+    // of the purchase is less than the value of the e-Gift card, the balance
+    // amount is non-refundable".
+    re: /\bone[-\s]?time\s+redemption\b|\b(?:redeemable|redeemed|used)\s+only\s+once\b|\bbalance(?:\s+amount)?\s+(?:is|will\s+be)\s+non[-\s]?refundable\b/i,
+    build: () => ({
+      status: 'bad',
+      headline: 'Single use only',
+      detail: 'The whole value goes in one transaction — anything left over is lost.',
+    }),
+  },
+  {
+    // "Any balance amount left on the used Gift Cards can be reused within the
+    // validity period", "…the outstanding balance … will reflect under the same
+    // Gift Card and can be used for subsequent transactions", "can be redeemed
+    // on one or more occasions", "valid for multiple/partial redemption".
+    re: /\bbalance\b[^.]{0,60}?\bcan\s+be\s+re-?used\b|\boutstanding\s+balance\b[^.]{0,120}?\bsubsequent\s+transactions?\b|\bredeemed\s+on\s+one\s+or\s+more\s+occasions\b|\bvalid\s+for\s+multiple\s*\/\s*partial\s+redemption\b/i,
+    build: () => ({
+      status: 'good',
+      headline: 'Balance carries forward',
+      detail: 'Spend part of it and the remainder stays usable for a later order.',
+    }),
+  },
   {
     // "Gift Voucher CANNOT be used multiple times" — GyFTR's wording for a
     // single-use voucher. Has to come before the rule below, which would
@@ -395,18 +479,22 @@ const NUMBER_WORDS = {
   ten: 10, eleven: 11, twelve: 12, eighteen: 18, thirty: 30, sixty: 60, ninety: 90,
 };
 
+const NUMBERED_WORD = new RegExp(
+  `\\b(${Object.keys(NUMBER_WORDS).join('|')})(?=\\s*(?:\\(\\d+\\)\\s*)?` +
+    // …followed by a period ("one year") or a card ("only one Gift Card").
+    `(?:day|days|month|months|year|years|gift\\s*cards?|gift\\s*vouchers?|e-?gift|cards?|vouchers?|gvs?|egvs?|gcs?)\\b)`,
+  'gi',
+);
+
 /**
- * Validity, reading numbers written as words too: Lulu on Amazon says "valid
- * only for one year from the date of activation". The match runs on a copy
- * with the numbers as digits, but the quote shown is the seller's own words.
+ * Same as `findFirst`, but numbers written as words count too. Woohoo's
+ * Cinépolis terms say "Only one Gift Card can be applied … against each
+ * transaction"; Lulu's Amazon listing says "valid only for one year". The
+ * rules run on a copy with digits, and the quote shown is the seller's own.
  */
-function findValidity(sents) {
-  const words = new RegExp(
-    `\\b(${Object.keys(NUMBER_WORDS).join('|')})(?=\\s*(?:\\(\\d+\\)\\s*)?(?:day|days|month|months|year|years)\\b)`,
-    'gi',
-  );
-  const numbered = sents.map((s) => s.replace(words, (w) => String(NUMBER_WORDS[w.toLowerCase()])));
-  const fact = findFirst(numbered, VALIDITY_RULES);
+function findWithNumbers(sents, rules) {
+  const numbered = sents.map((s) => s.replace(NUMBERED_WORD, (w) => String(NUMBER_WORDS[w.toLowerCase()])));
+  const fact = findFirst(numbered, rules);
   if (!fact) return null;
   const i = numbered.indexOf(fact.source);
   return i === -1 ? fact : { ...fact, source: sents[i] };
@@ -430,32 +518,34 @@ export function deriveKeyFacts(textBlocks) {
   }
 
   return {
-    stacking: refineCardLimit(findFirst(sents, STACKING_RULES), sents) ??
+    stacking: refineCardLimit(findWithNumbers(sents, STACKING_RULES), sents) ??
       unknown('whether multiple cards can be combined'),
     clubbing:
-      findFirst(sents, CLUBBING_RULES) ?? unknown('whether it can be clubbed with other offers'),
-    validity: findValidity(sents) ?? unknown('a validity period'),
+      findWithNumbers(sents, CLUBBING_RULES) ?? unknown('whether it can be clubbed with other offers'),
+    validity: findWithNumbers(sents, VALIDITY_RULES) ?? unknown('a validity period'),
     partialUse:
-      partial ?? findFirst(sents, PARTIAL_RULES) ?? unknown('what happens to an unused balance'),
+      partial ??
+      findWithNumbers(sents, PARTIAL_RULES) ??
+      unknown('what happens to an unused balance'),
   };
 }
 
 /**
- * Re-reads an offer's stored terms with today's rules and fills in any key
- * fact still marked "Not stated". Answers already found are left alone.
+ * Re-reads an offer's stored terms with today's rules.
  *
  * For offers a run carries over without re-fetching — Amazon's, on any day
- * Amazon blocks the scrape — so a rule that learns a new phrasing ("valid
- * for one year…") still reaches them.
+ * Amazon blocks the scrape — so a rule that learns a new phrasing ("valid for
+ * one year…", "only one Gift Card … per transaction") or stops misreading one
+ * still reaches them. A fact the re-read can't answer keeps its stored
+ * answer: that came from the full page text, the stored terms are a summary.
  */
-export function fillUnknownFacts(offer) {
-  const unknownKeys = Object.keys(offer.keyFacts ?? {}).filter(
-    (k) => offer.keyFacts[k]?.status === 'unknown',
-  );
-  if (!unknownKeys.length || !offer.otherTerms?.length) return offer;
+export function refreshFactsFromTerms(offer) {
+  if (!offer.otherTerms?.length || !offer.keyFacts) return offer;
   const reread = deriveKeyFacts([offer.otherTerms.join('\n')]);
   const keyFacts = { ...offer.keyFacts };
-  for (const k of unknownKeys) if (reread[k]?.status !== 'unknown') keyFacts[k] = reread[k];
+  for (const k of Object.keys(keyFacts)) {
+    if (reread[k] && reread[k].status !== 'unknown') keyFacts[k] = reread[k];
+  }
   return { ...offer, keyFacts };
 }
 
