@@ -74,7 +74,12 @@ function mergeFetched(allFetched, checkedAt) {
   return {
     ...primary.fresh,
     denominations,
-    customAmount: fetched.find((f) => f.fresh.customAmount)?.fresh.customAmount ?? null,
+    // The headline listing's own range first, so the amount box and the
+    // headline quote the same card.
+    customAmount:
+      primary.fresh.customAmount ??
+      fetched.find((f) => f.fresh.customAmount)?.fresh.customAmount ??
+      null,
     sources,
     listingCount: sources.length,
     lastChecked: checkedAt,

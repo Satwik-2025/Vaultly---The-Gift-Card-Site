@@ -80,8 +80,15 @@ function productState(html) {
  * product actually gives 0.5%.
  */
 function discountFrom(product) {
-  const m = String(product.offerShortDesc ?? '').match(/(\d{1,2}(?:\.\d{1,2})?)\s*%/);
-  return m ? Number(m[1]) : 0;
+  const desc = String(product.offerShortDesc ?? '');
+  const m = desc.match(/(\d{1,2}(?:\.\d{1,2})?)\s*%/);
+  if (!m) return 0;
+  const pct = Number(m[1]);
+  // "Get 8% Extra" is bonus value, not money off: ₹1,000 buys a ₹1,080 card.
+  // As a discount on the card's value that's 8/108 = 7.4%, which is what the
+  // comparison needs — taking it as 8% off overstated it.
+  if (/extra/i.test(desc)) return Math.round((pct / (100 + pct)) * 1000) / 10;
+  return pct;
 }
 
 /**
