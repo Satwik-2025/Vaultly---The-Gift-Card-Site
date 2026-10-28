@@ -124,12 +124,29 @@ function paymentOffersFrom(product) {
 
       const cap = Number(action.maxValue);
 
+      /*
+        The description carries the conditions the title leaves out. RuPay's
+        "Get 90% Discount" is, in full: code FIRST, UPI, ₹10 order value only,
+        once, new customers only — a ₹9 saving, not 90% off any card.
+      */
+      const text = `${c.description ?? ''} ${c.shortDescription ?? ''}`;
+      const onlyValue = text.match(/on\s+(?:rs\.?|₹)\s*([\d,]+)\s*order\s*value/i)?.[1];
+      const newOnly = /new\s+(users?|customers?)/i.test(text);
+      const once = /once\s+per\s+(customer|user)/i.test(text);
+      const limits = [
+        newOnly && 'new customers only',
+        once && 'once',
+        onlyValue && `₹${onlyValue} order only`,
+      ].filter(Boolean);
+
       return {
         name: String(c.title || c.name || '').trim() || 'Payment offer',
         discountPct: action.valueType === 'PERCENTAGE' ? value : 0,
         flatOff: action.valueType === 'PERCENTAGE' ? null : value,
         code: String(c.couponCode ?? '').trim() || null,
         maxDiscount: Number.isFinite(cap) && cap > 0 ? cap : null,
+        limits: limits.length ? limits.join(' · ') : null,
+        restricted: newOnly || Boolean(onlyValue),
       };
     })
     .filter(Boolean)
@@ -151,8 +168,22 @@ export async function fetchBrand({ slug, url }) {
   const giftOnly = Array.isArray(product.orderModes) && !product.orderModes.includes('self');
 
   const price = product.price ?? {};
-  const { discountPct, bonusPct } = discountFrom(product);
+  const campaigns = paymentOffersFrom(product);
+  const headline = discountFrom(product);
+  const bonusPct = headline.bonusPct;
   const bonus = bonusPct ? { bonusPct } : {};
+  /*
+    Woohoo sometimes puts a one-off promo in the card's own headline: RuPay's
+    reads "99% Discount" because of a new-customer coupon worth 90% on a ₹10
+    order. That isn't the card's price, so when the headline matches a
+    restricted promo the card counts as face value and the promo is shown with
+    its conditions instead.
+  */
+  const discountPct = campaigns.some(
+    (c) => c.restricted && Math.abs(c.discountPct - headline.discountPct) <= 10,
+  )
+    ? 0
+    : headline.discountPct;
 
   const listed = (price.denominations ?? [])
     .map(Number)
@@ -175,7 +206,7 @@ export async function fetchBrand({ slug, url }) {
   // A "Get Extra" card repeats its bonus as a campaign ("Get 8% extra on your
   // order value"). That's the same 8%, not a second saving on top — listed
   // again it read as "up to 8% off by payment method".
-  const paymentOffers = paymentOffersFrom(product).filter(
+  const paymentOffers = campaigns.filter(
     (p) => !(bonusPct && /extra/i.test(p.name)),
   );
 

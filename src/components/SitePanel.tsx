@@ -119,7 +119,11 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
   const missedLastCheck = new Date(latestCheck).getTime() - checkedMs > 60_000;
 
   // The best payment-method discount, which can beat the card discount outright.
-  const bestPaymentPct = offer.paymentOffers.reduce((n, p) => Math.max(n, p.discountPct), 0);
+  // One-off promos (new customers, a single order value) are listed but never
+  // allowed to stand in for the seller's price.
+  const bestPaymentPct = offer.paymentOffers
+    .filter((p) => !p.restricted)
+    .reduce((n, p) => Math.max(n, p.discountPct), 0);
   // "Discount on UPI Payments" -> "UPI Payments", which is all that fits here.
   const bestPaymentMethod = (offer.paymentOffers.find((p) => p.discountPct === bestPaymentPct)?.name ?? '')
     .replace(/^Discount\s+(on|with)\s+/i, '')
@@ -185,9 +189,11 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
             <p className="text-faint text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
               {offer.bonusPct
                 ? 'Get'
-                : offer.headlineDiscountPct > 0 || bestPaymentPct === 0
+                : offer.headlineDiscountPct > 0
                   ? 'Up to'
-                  : 'Best price with'}
+                  : bestPaymentPct > 0
+                    ? 'Best price with'
+                    : 'Price'}
             </p>
             <p
               className="font-display text-3xl leading-none font-extrabold"
@@ -399,6 +405,7 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
                   {p.name} · {formatPct(p.discountPct)}%
                   {/* The code is the whole mechanism — without it there's no discount. */}
                   {p.code ? <span className="ml-1 opacity-70">code {p.code}</span> : null}
+                  {p.limits ? <span className="ml-1 opacity-70">({p.limits})</span> : null}
                 </span>
               ))}
             </div>

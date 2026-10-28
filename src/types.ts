@@ -92,6 +92,13 @@ export interface PaymentOffer {
   code?: string | null;
   /** Cap on the discount, in rupees. */
   maxDiscount?: number | null;
+  /**
+   * The fine print that makes this a one-off promo rather than a price, e.g.
+   * "new customers only · once · ₹10 order only". Restricted offers are shown
+   * but never counted as the seller's best price.
+   */
+  limits?: string | null;
+  restricted?: boolean;
 }
 
 export interface Offer {
