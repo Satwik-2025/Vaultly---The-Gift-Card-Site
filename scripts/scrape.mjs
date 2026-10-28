@@ -59,14 +59,29 @@ async function runSource(name, mod) {
 
   let ok = 0;
   let skipped = 0;
-  // Amazon runs through a real browser — keep it to a couple of tabs.
-  const sourceConcurrency = name === 'amazon' ? Math.min(concurrency, 3) : concurrency;
+  // Amazon runs through a real browser and watches for bursts: one page at a
+  // time, with a pause between them, and the moment it shows a bot check we
+  // stop for the day rather than keep knocking.
+  const gentle = name === 'amazon';
+  const sourceConcurrency = gentle ? 1 : concurrency;
+  let halted = false;
 
   const results = await mapPool(
     urls,
     sourceConcurrency,
     async (u) => {
-      const brand = await mod.fetchBrand(u);
+      if (halted) return null;
+      if (gentle) await mod.politePause?.();
+      let brand;
+      try {
+        brand = await mod.fetchBrand(u);
+      } catch (e) {
+        if (!e?.blocked) throw e;
+        halted = true;
+        console.error(`
+[${name}] ${e.kind} — stopping here so it doesn't get worse`);
+        return null;
+      }
       if (brand) ok++;
       else skipped++;
       return brand;

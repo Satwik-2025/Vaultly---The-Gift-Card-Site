@@ -116,6 +116,10 @@ class AmazonBlocked extends Error {
   }
 }
 
+/** A few seconds, varied, between page loads — see scripts/scrape.mjs. */
+export const politePause = (min = 2500, max = 6000) =>
+  new Promise((r) => setTimeout(r, min + Math.random() * (max - min)));
+
 /** Distinguishes "Amazon won't talk to us" from "no such product". */
 const blockedBy = (html) => (isCaptcha(html) ? 'captcha' : isThrottled(html) ? 'throttled' : null);
 
@@ -162,14 +166,19 @@ export async function listBrandUrls({ pages = 4 } = {}) {
       Array.from({ length: pages }, (_, i) => ({ term, page: i + 1 })),
     );
 
+    let first = true;
     for (const { term, page: p } of targets) {
+      // A person doesn't open search pages back to back.
+      if (!first) await politePause();
+      first = false;
       const url = `https://www.amazon.in/s?k=${encodeURIComponent(term)}&i=gift-cards&page=${p}`;
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
         const block = blockedBy(await page.content());
         if (block) {
-          console.error(`[amazon] ${block} while listing — stopping early`);
-          break;
+          // Stop the whole run, not just the listing: carrying on to product
+          // pages would be exactly the repeat traffic that keeps the block up.
+          throw new AmazonBlocked(block);
         }
         await page.waitForSelector('[data-component-type="s-search-result"]', { timeout: 15000 });
       } catch {
