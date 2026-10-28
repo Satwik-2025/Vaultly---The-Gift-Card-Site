@@ -1,5 +1,5 @@
 import { fetchText, extractSitemapUrls } from '../lib/http.mjs';
-import { htmlToBullets, htmlToText, cleanBrandName, brandKey } from '../lib/html.mjs';
+import { htmlToBullets, htmlToSteps, htmlToText, cleanBrandName, brandKey } from '../lib/html.mjs';
 import { deriveKeyFacts } from '../lib/facts.mjs';
 import { findViaSitemap } from '../lib/find.mjs';
 
@@ -153,6 +153,23 @@ function paymentOffersFrom(product) {
     .sort((a, b) => b.discountPct - a.discountPct);
 }
 
+/**
+ * The "How to use" tab. Woohoo stores it either as a JSON list of illustrated
+ * steps (Ajio) or as plain HTML (RuPay).
+ */
+function howToUseFrom(product) {
+  const raw = product.cpg?.howToUse;
+  if (!raw) return null;
+  let steps;
+  try {
+    const list = JSON.parse(raw);
+    steps = Array.isArray(list) ? list.flatMap((s) => htmlToSteps(s?.description ?? '')) : [];
+  } catch {
+    steps = htmlToSteps(raw);
+  }
+  return steps.length ? steps : null;
+}
+
 export async function fetchBrand({ slug, url }) {
   const { body } = await fetchText(url);
   const product = productState(body);
@@ -200,6 +217,9 @@ export async function fetchBrand({ slug, url }) {
   if (!isRange && !listed.length) return null;
 
   const terms = htmlToText(product.importantInstructions);
+  // Woohoo states validity in its own field ("Upto 2 Years from the date of
+  // issue") rather than in the terms, so the terms alone said "Not stated".
+  const expiry = String(product.expiry ?? '').trim();
   const description = htmlToText(product.shortDescription ?? product.description ?? '');
 
   const name = cleanBrandName(product.name);
@@ -228,7 +248,8 @@ export async function fetchBrand({ slug, url }) {
       denominations: isRange ? [] : listed.map((value) => ({ value, discountPct, ...bonus })),
       // An open-value card: the buyer types any amount within these bounds.
       customAmount: isRange ? { min, max, discountPct, ...bonus, sourceUrl: url } : null,
-      keyFacts: deriveKeyFacts([terms]),
+      keyFacts: deriveKeyFacts([expiry ? `Validity: ${expiry}.` : '', terms]),
+      howToUse: howToUseFrom(product),
       otherTerms: htmlToBullets(product.importantInstructions),
       paymentOffers,
       redemption: null,

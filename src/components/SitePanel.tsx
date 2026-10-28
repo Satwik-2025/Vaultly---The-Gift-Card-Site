@@ -5,6 +5,7 @@ import { Icon } from './Icon';
 import { formatINR, formatPct, getPlatform, payable, savings } from '../services/catalog';
 import type { Brand, Denomination, Offer } from '../types';
 import { ink } from '../lib/color';
+import { howToUseSteps } from '../lib/howToUse';
 
 /** Stable identity for a denomination. Amount alone is not unique. */
 const denomKey = (d: Denomination): string => `${d.value}|${d.label ?? ''}`;
@@ -137,6 +138,9 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
   const newUserPromo = offer.paymentOffers
     .filter((p) => p.restricted && p.discountPct > Math.max(offer.headlineDiscountPct, bestPaymentPct))
     .sort((a, b) => b.discountPct - a.discountPct)[0];
+
+  const steps = howToUseSteps(offer);
+  const [showSteps, setShowSteps] = useState(false);
 
   const canBuy = offer.inStock && (usingCustom ? !customError : Boolean(denom));
 
@@ -572,6 +576,50 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
             <Icon name="check" className="h-3.5 w-3.5" />
             {platform.name} price checked {checkedAgo}
           </p>
+        )}
+
+        {/* Collapsed by default: useful once you've bought, noise before. */}
+        {steps.length > 0 && (
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+            <button
+              type="button"
+              onClick={() => setShowSteps((v) => !v)}
+              aria-expanded={showSteps}
+              className="flex w-full items-center justify-center gap-1.5 px-4 py-3 text-xs font-bold"
+            >
+              <Icon
+                name="chevronDown"
+                className={`h-3.5 w-3.5 transition-transform duration-200 ${showSteps ? 'rotate-180' : ''}`}
+              />
+              How to use
+            </button>
+            <AnimatePresence initial={false}>
+              {showSteps && (
+                <motion.div
+                  key="steps"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.45, 0, 0.25, 1] }}
+                  className="overflow-hidden"
+                >
+                  <ol className="space-y-2.5 px-4 pb-4">
+                    {steps.map((step, i) => (
+                      <li key={i} className="flex gap-2.5 text-[0.75rem] leading-relaxed">
+                        <span
+                          className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-[0.62rem] font-bold text-white"
+                          style={{ background: platform.accent }}
+                        >
+                          {i + 1}
+                        </span>
+                        <span className="text-muted">{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
 
         <button type="button" onClick={onJumpToTerms} className="btn btn-glass w-full !text-xs">

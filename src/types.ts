@@ -131,6 +131,8 @@ export interface Offer {
   /** Discount varies by payment method on some sellers */
   paymentOffers: PaymentOffer[];
   redemption: string | null;
+  /** Steps for using the card, where the seller publishes them. */
+  howToUse?: string[] | null;
   inStock: boolean;
   deliveryEta: string;
   /** ISO timestamp of the scrape that produced this */

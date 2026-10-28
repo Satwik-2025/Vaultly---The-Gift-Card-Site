@@ -169,7 +169,11 @@ const VALIDITY_RULES = [
       const months = unit.startsWith('year') ? n * 12 : unit.startsWith('month') ? n : n / 30;
       return {
         status: months >= 12 ? 'good' : months >= 6 ? 'limited' : 'bad',
-        headline: `${n} ${unit.replace(/s$/, '')}${n === 1 ? '' : 's'} from issue`,
+        // Say what the clock starts from when the seller does: Ajio's runs
+        // from activation, which a buyer controls; "issue" would be wrong.
+        headline: `${n} ${unit.replace(/s$/, '')}${n === 1 ? '' : 's'} from ${
+          /activation/i.test(m.input ?? '') ? 'activation' : /purchase/i.test(m.input ?? '') ? 'purchase' : 'issue'
+        }`,
         detail:
           months >= 12
             ? 'A comfortable window — no real pressure to rush the purchase.'

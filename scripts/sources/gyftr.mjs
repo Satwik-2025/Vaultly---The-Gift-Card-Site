@@ -1,5 +1,5 @@
 import { fetchText, extractSitemapUrls } from '../lib/http.mjs';
-import { htmlToBullets, htmlToText, cleanBrandName, brandKey } from '../lib/html.mjs';
+import { htmlToBullets, htmlToSteps, htmlToText, cleanBrandName, brandKey } from '../lib/html.mjs';
 import { deriveKeyFacts } from '../lib/facts.mjs';
 import { findViaSitemap } from '../lib/find.mjs';
 
@@ -34,6 +34,35 @@ export async function listBrandUrls() {
 /** Does GyFTR stock this brand right now? Matched against their sitemap. */
 export async function findBrand({ brandId, name }) {
   return findViaSitemap(PLATFORM.id, listBrandUrls, { brandId, name });
+}
+
+/**
+ * GyFTR has no "how to use" field, but its FAQs often answer "How do I redeem
+ * my … gift card?" step by step. That answer, when there is one.
+ */
+function howToUseFrom(faqsHtml) {
+  const lines = htmlToText(faqsHtml)
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const isQuestion = (l) => /\?$/.test(l);
+  const start = lines.findIndex(
+    (l) =>
+      isQuestion(l) &&
+      /\bhow\b[^?]{0,40}\b(use|redeem|apply|add)\b/i.test(l) &&
+      // "How to send … to someone else?" is about gifting, not using.
+      !/\bsend\b|\bgift(ing)? to\b/i.test(l),
+  );
+  if (start === -1) return null;
+  const answer = [];
+  for (const l of lines.slice(start + 1)) {
+    // The next question, or the marketing that follows the steps
+    // ("Ajio Gift Cards for Corporate Gifting", "Download the GyFTR App…").
+    if (isQuestion(l) || /\bgift cards? for\b|\bdownload the gyftr app\b/i.test(l)) break;
+    answer.push(l);
+  }
+  const steps = htmlToSteps(answer.join('\n'));
+  return steps.length ? steps : null;
 }
 
 function parseNextData(html) {
@@ -124,6 +153,7 @@ export async function fetchBrand({ slug, url }) {
       keyFacts,
       otherTerms: instructions.concat(checkout),
       paymentOffers: paymentOffers.length > 1 ? paymentOffers : [],
+      howToUse: howToUseFrom(detail.long_description) ?? howToUseFrom(detail.faqs),
       redemption: detail.redemption_type === 'ON' ? 'Online' : detail.redemption_type || null,
       inStock: true,
       deliveryEta: 'Instant · SMS / email / WhatsApp',

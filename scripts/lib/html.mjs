@@ -134,6 +134,34 @@ const BOILERPLATE =
   /reverse engineer|intellectual property rights|indemnif|governed by and construed|conflict of laws|exclusive jurisdiction|courts at |report to support@|links to third party|disclaimer of warranties|terms of use of the website|suspend or terminate your use|these terms will survive|computer equipments|non-commercial use only and shall not re-sell|shipper\s*\/\s*seller|^\(?[ivxlcdm]+\)?$|^[A-Z]\.\s|^(customer care|helpline|contact us|about the brand)\b|^(see more|read more|show details)|secure transaction|payment security system|out of \d+ stars|see more product details|we don.t share your credit card|encrypts your information|^(brand|manufacturer|item weight|asin|country of origin)\s*:/i;
 
 /** HTML list/paragraph -> array of clean bullet strings. */
+/**
+ * "How to use" steps, one per line. Looser than `htmlToBullets`: steps are
+ * often short ("Visit ajio.com"), and dropping them would leave gaps in a
+ * sequence people follow in order. "Step 1:" style prefixes are removed —
+ * the page numbers the list itself.
+ */
+export function htmlToSteps(html) {
+  const seen = new Set();
+  return htmlToText(html)
+    .split(/\n|\s*[•·]\s*/)
+    .map((l) =>
+      l
+        .replace(/^[•·\-–—\s]+/, '')
+        .replace(/^(?:step\s*)?\d{1,2}\s*[:.)-]\s*/i, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    .filter((l) => {
+      if (l.length < 6 || l.length > 400 || !/[a-z]/i.test(l)) return false;
+      if (/&[a-zA-Z#][a-zA-Z0-9]*;/.test(l)) return false;
+      const key = l.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 12);
+}
+
 export function htmlToBullets(html) {
   const seen = new Set();
   return (
