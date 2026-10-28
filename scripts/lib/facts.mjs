@@ -162,7 +162,9 @@ const CLUBBING_RULES = [
 // --- 3. Validity -------------------------------------------------------------
 const VALIDITY_RULES = [
   {
-    re: /\b(?:valid(?:ity)?|expir\w*)\b[^.]{0,50}?\b(\d{1,3})\s*(day|days|month|months|year|years)\b/i,
+    // Reaches 70 characters: "The validity of your Tata Cliq gift voucher
+    // from GyFTR is between 6 months" puts the number 52 characters along.
+    re: /\b(?:valid(?:ity)?|expir\w*)\b[^.]{0,70}?\b(\d{1,3})\s*(day|days|month|months|year|years)\b/i,
     build: (m) => {
       const n = Number(m[1]);
       const unit = m[2].toLowerCase();
@@ -210,6 +212,17 @@ const VALIDITY_RULES = [
       status: 'limited',
       headline: 'Varies — printed on the voucher',
       detail: 'No fixed period is published; the expiry date arrives with the voucher itself.',
+    }),
+  },
+  {
+    // Amazon listings sold by GyFTR: "The validity of the Gift Cards that GyFTR
+    // offer depends on the value and the brand. We provide this detail with
+    // the voucher."
+    re: /\bvalidity\b[^.]{0,80}?\bdepends\s+on\b|\bprovide\s+(?:this|the|these)\s+(?:detail|details|validity)\b[^.]{0,30}?\bwith\s+the\s+(?:voucher|gift\s*card|e-?gift)/i,
+    build: () => ({
+      status: 'limited',
+      headline: 'Varies — printed on the voucher',
+      detail: 'Depends on the card; the expiry date arrives with the voucher itself.',
     }),
   },
   {
@@ -377,6 +390,28 @@ function refineCardLimit(fact, sents) {
   return fact;
 }
 
+const NUMBER_WORDS = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12, eighteen: 18, thirty: 30, sixty: 60, ninety: 90,
+};
+
+/**
+ * Validity, reading numbers written as words too: Lulu on Amazon says "valid
+ * only for one year from the date of activation". The match runs on a copy
+ * with the numbers as digits, but the quote shown is the seller's own words.
+ */
+function findValidity(sents) {
+  const words = new RegExp(
+    `\\b(${Object.keys(NUMBER_WORDS).join('|')})(?=\\s*(?:\\(\\d+\\)\\s*)?(?:day|days|month|months|year|years)\\b)`,
+    'gi',
+  );
+  const numbered = sents.map((s) => s.replace(words, (w) => String(NUMBER_WORDS[w.toLowerCase()])));
+  const fact = findFirst(numbered, VALIDITY_RULES);
+  if (!fact) return null;
+  const i = numbered.indexOf(fact.source);
+  return i === -1 ? fact : { ...fact, source: sents[i] };
+}
+
 /**
  * @param {string[]} textBlocks - terms, instructions, redemption steps and FAQs.
  */
@@ -399,10 +434,29 @@ export function deriveKeyFacts(textBlocks) {
       unknown('whether multiple cards can be combined'),
     clubbing:
       findFirst(sents, CLUBBING_RULES) ?? unknown('whether it can be clubbed with other offers'),
-    validity: findFirst(sents, VALIDITY_RULES) ?? unknown('a validity period'),
+    validity: findValidity(sents) ?? unknown('a validity period'),
     partialUse:
       partial ?? findFirst(sents, PARTIAL_RULES) ?? unknown('what happens to an unused balance'),
   };
+}
+
+/**
+ * Re-reads an offer's stored terms with today's rules and fills in any key
+ * fact still marked "Not stated". Answers already found are left alone.
+ *
+ * For offers a run carries over without re-fetching — Amazon's, on any day
+ * Amazon blocks the scrape — so a rule that learns a new phrasing ("valid
+ * for one year…") still reaches them.
+ */
+export function fillUnknownFacts(offer) {
+  const unknownKeys = Object.keys(offer.keyFacts ?? {}).filter(
+    (k) => offer.keyFacts[k]?.status === 'unknown',
+  );
+  if (!unknownKeys.length || !offer.otherTerms?.length) return offer;
+  const reread = deriveKeyFacts([offer.otherTerms.join('\n')]);
+  const keyFacts = { ...offer.keyFacts };
+  for (const k of unknownKeys) if (reread[k]?.status !== 'unknown') keyFacts[k] = reread[k];
+  return { ...offer, keyFacts };
 }
 
 /** How many of the four we actually managed to answer — a data-quality signal. */
