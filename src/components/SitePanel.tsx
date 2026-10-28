@@ -129,6 +129,15 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
     .replace(/^Discount\s+(on|with)\s+/i, '')
     .trim();
 
+  /*
+    The best one-off promo, when it beats what everyone else gets. It doesn't
+    set the price — most buyers can't use it — but it's worth knowing about:
+    a first order from a new account or number can be far cheaper.
+  */
+  const newUserPromo = offer.paymentOffers
+    .filter((p) => p.restricted && p.discountPct > Math.max(offer.headlineDiscountPct, bestPaymentPct))
+    .sort((a, b) => b.discountPct - a.discountPct)[0];
+
   const canBuy = offer.inStock && (usingCustom ? !customError : Boolean(denom));
 
   /**
@@ -242,6 +251,38 @@ export function SitePanel({ brand, offer, isBest, onJumpToTerms, latestCheck }: 
             )}
           </div>
         </div>
+
+        {newUserPromo && (
+          <div
+            className="mt-3 flex items-start gap-2.5 rounded-xl border px-3 py-2.5"
+            style={{ borderColor: `${platform.accent}66`, background: `${platform.accent}14` }}
+          >
+            <span className="mt-0.5 shrink-0" style={{ color: ink(platform.accent) }}>
+              <Icon name="spark" className="h-4 w-4" />
+            </span>
+            <p className="text-[0.75rem] leading-relaxed">
+              <span className="font-bold" style={{ color: ink(platform.accent) }}>
+                {formatPct(newUserPromo.discountPct)}% off
+              </span>{' '}
+              {/new customers/.test(newUserPromo.limits ?? '')
+                ? `for new ${platform.name} customers`
+                : 'as a one-off promo'}
+              {newUserPromo.code ? (
+                <>
+                  {' '}
+                  with code <span className="font-bold">{newUserPromo.code}</span>
+                </>
+              ) : null}
+              .{' '}
+              <span className="text-muted">
+                {newUserPromo.limits
+                  ? `${newUserPromo.limits.charAt(0).toUpperCase()}${newUserPromo.limits.slice(1)}.`
+                  : ''}{' '}
+                Not the regular price, so it isn’t counted in the comparison.
+              </span>
+            </p>
+          </div>
+        )}
 
         {offer.bonusPct ? (
           <p className="text-muted mt-3 text-[0.72rem] leading-relaxed">
