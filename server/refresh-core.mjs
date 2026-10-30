@@ -149,6 +149,8 @@ export async function refreshSellerWith(mod, platformId, brand, offer, checkedAt
   const fetched = [];
   const seen = new Set();
   let anyError = false;
+  /** Why the last page failed, so a failure can say what went wrong. */
+  let reason = null;
 
   /**
    * Read a batch of this seller's pages at once. A brand can span twenty pages
@@ -178,6 +180,7 @@ export async function refreshSellerWith(mod, platformId, brand, offer, checkedAt
             url: source.url,
             title: source.title,
           });
+          if (!fresh?.offer) reason ??= 'the page loaded but had no product data (blocked, or changed)';
           return fresh?.offer
             ? { source: { ...source, label: source.label ?? null }, fresh: fresh.offer }
             : null;
@@ -186,6 +189,7 @@ export async function refreshSellerWith(mod, platformId, brand, offer, checkedAt
           // broken", and the user is told which.
           if (err?.blocked) blocked ??= err.kind ?? 'blocked';
           anyError = true; // One dead page shouldn't discard the others.
+          reason = String(err?.message ?? err);
           return null;
         }
       },
@@ -245,7 +249,7 @@ export async function refreshSellerWith(mod, platformId, brand, offer, checkedAt
       };
     }
   }
-  return { status: 'failed', offer };
+  return { status: 'failed', offer, reason };
 }
 
 /**
@@ -287,6 +291,8 @@ export async function computeRefresh({ brand, sources, cashkaro }) {
     unavailable: [],
     unstocked: [],
     blocked: [],
+    /** Per seller: why a re-check that couldn't read it failed. */
+    reasons: {},
   };
   const offers = [];
 
@@ -301,6 +307,7 @@ export async function computeRefresh({ brand, sources, cashkaro }) {
       // Kept on screen with its old timestamp, but say so rather than
       // passing stale numbers off as a fresh check.
       changes.unavailable.push(r.platformId);
+      if (r.reason) changes.reasons[r.platformId] = r.reason;
     }
   }
 
