@@ -44,8 +44,16 @@ jobs:
       - name: Install a browser for Amazon
         run: npx playwright install --with-deps chromium
 
-      - name: Scrape GyFTR and Woohoo
-        run: node scripts/scrape.mjs --only gyftr,woohoo
+      # One step per seller. They used to share a step, so when GyFTR blocked
+      # GitHub's servers (0 offers, which the safety guard rightly refuses to
+      # save) Woohoo's good update went down with it. Now Woohoo is saved
+      # regardless, and a blocked GyFTR just keeps its previous prices.
+      - name: Scrape Woohoo
+        run: node scripts/scrape.mjs --only woohoo
+
+      - name: Scrape GyFTR
+        continue-on-error: true
+        run: node scripts/scrape.mjs --only gyftr
 
       # Run separately so an Amazon CAPTCHA can't cost the other sellers their
       # update. If Amazon is blocked, the scraper's safety guard refuses to

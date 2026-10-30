@@ -66,12 +66,24 @@ async function runSource(name, mod) {
   const gentle = name === 'amazon';
   const sourceConcurrency = gentle ? 1 : concurrency;
   let halted = false;
+  let attempted = 0;
+  const GIVE_UP_AFTER = 30;
 
   const results = await mapPool(
     urls,
     sourceConcurrency,
     async (u) => {
       if (halted) return null;
+      // A host that has turned every page away isn't going to change its mind
+      // on page 300. Stop asking after a fair try, rather than hammering it.
+      if (attempted >= GIVE_UP_AFTER && ok === 0) {
+        halted = true;
+        console.error(
+          `\n[${name}] none of the first ${attempted} pages could be read — it looks like we're being blocked. Stopping here.`,
+        );
+        return null;
+      }
+      attempted++;
       if (gentle) await mod.politePause?.();
       let brand;
       try {
@@ -79,8 +91,7 @@ async function runSource(name, mod) {
       } catch (e) {
         if (!e?.blocked) throw e;
         halted = true;
-        console.error(`
-[${name}] ${e.kind} — stopping here so it doesn't get worse`);
+        console.error(`\n[${name}] ${e.kind} — stopping here so it doesn't get worse`);
         return null;
       }
       if (brand) ok++;
