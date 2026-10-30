@@ -59,9 +59,16 @@ jobs:
       # update. If Amazon is blocked, the scraper's safety guard refuses to
       # overwrite its existing offers and exits non-zero; the run carries on
       # with yesterday's Amazon prices.
-      - name: Scrape Amazon
+      # Searches each brand by name, one at a time (the pattern that gets read)
+      # rather than opening product pages cold. Amazon turns GitHub's addresses
+      # away, so this only gets through if an AMAZON_PROXY secret is set
+      # (Settings > Secrets and variables > Actions); otherwise it stops at the
+      # first bot check and the previous Amazon prices stay.
+      - name: Refresh Amazon
         continue-on-error: true
-        run: node scripts/scrape.mjs --only amazon
+        env:
+          AMAZON_PROXY: ${{ secrets.AMAZON_PROXY }}
+        run: node scripts/fill-amazon.mjs --refresh
 
       - name: Refresh CashKaro cashback
         continue-on-error: true

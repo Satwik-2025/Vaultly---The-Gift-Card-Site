@@ -296,7 +296,10 @@ Amazon is the hard one: plain HTTP gets a bot check, so it's read through a real
 2. **Browse like a shopper.** `npm run fill:amazon -- --refresh` searches each brand by name and
    opens the result, rather than requesting product pages cold.
 3. **Go slowly.** One page at a time with a 2.5–9 s pause between them, oldest prices first.
-4. **Stop at the first block.** The moment Amazon shows a CAPTCHA or a *"Click to continue
+4. **Optionally, change where it comes from.** Set `AMAZON_PROXY=http://user:pass@host:port` in
+   `.env` (see `.env.example`), or as a repository secret of the same name for the daily job,
+   and the browser routes through it. Nothing else changes: same pace, same stop-on-block.
+5. **Stop at the first block.** The moment Amazon shows a CAPTCHA or a *"Click to continue
    shopping"* interstitial the run stops — it never retries and **never clicks through**. Blocked
    is reported as blocked, never mistaken for a delisting, and the panel keeps its previous
    numbers and says how old they are.

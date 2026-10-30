@@ -21,6 +21,43 @@ export const PLATFORM = {
   homeUrl: 'https://www.amazon.in/gift-card-store/b?node=3704982031',
 };
 
+// Optional settings live in .env (git-ignored): the dev server and the scripts
+// both load this module, and Node reads the file itself — no extra dependency.
+try {
+  process.loadEnvFile?.('.env');
+} catch {
+  // No .env file, which is the normal case.
+}
+
+/**
+ * An optional proxy for the browser, from AMAZON_PROXY:
+ *
+ *   AMAZON_PROXY=http://user:password@host:port
+ *
+ * Amazon throttles by address, and a server's or a busy home connection's
+ * address gets turned away after a while. A proxy changes which address the
+ * requests come from — nothing else: they're the same slow, one-brand-at-a-time
+ * requests, and a bot check still stops the run. Unset, nothing changes.
+ *
+ * Returns Playwright's proxy option, or undefined.
+ */
+export function proxyFromEnv(raw = process.env.AMAZON_PROXY) {
+  const value = String(raw ?? '').trim();
+  if (!value) return undefined;
+  try {
+    const u = new URL(value.includes('://') ? value : `http://${value}`);
+    return {
+      server: `${u.protocol}//${u.host}`,
+      ...(u.username
+        ? { username: decodeURIComponent(u.username), password: decodeURIComponent(u.password) }
+        : {}),
+    };
+  } catch {
+    console.error('[amazon] AMAZON_PROXY is set but is not a valid address — ignoring it.');
+    return undefined;
+  }
+}
+
 let browserPromise = null;
 
 async function getContext() {
@@ -31,9 +68,12 @@ async function getContext() {
       // Prefer a real installed browser: it carries a complete fingerprint
       // (which matters against Amazon's bot detection) and avoids Playwright's
       // bundled build, which needs a VC++ runtime this machine doesn't have.
+      const proxy = proxyFromEnv();
+      if (proxy) console.error(`[amazon] using a proxy (${new URL(proxy.server).host})`);
       const launchOpts = {
         headless: true,
         args: ['--disable-blink-features=AutomationControlled', '--no-sandbox'],
+        ...(proxy ? { proxy } : {}),
       };
       let browser = null;
       let lastErr = null;
