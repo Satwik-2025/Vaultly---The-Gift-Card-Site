@@ -41,7 +41,10 @@ export function SearchResults() {
       </motion.div>
 
 
-      <div className="no-scrollbar mt-6 flex gap-2 overflow-x-auto pb-1">
+      {/* The row scrolls sideways, which clips anything that spills out of it —
+          including the selected pill's glow. Padding gives the glow room, and
+          the negative margins hand that space back so the layout is unchanged. */}
+      <div className="no-scrollbar -mx-4 -mb-6 mt-5 flex gap-2 overflow-x-auto px-4 pt-1 pb-7">
         {(['All', ...categories] as const).map((c) => (
           <button
             key={c}
@@ -51,7 +54,7 @@ export function SearchResults() {
             className={`chip shrink-0 !px-3.5 !py-2 transition-all ${
               category === c
                 ? // Selected: solid brand fill, not a barely-there tint.
-                  'from-brand-500 to-brand-600 !border-transparent bg-gradient-to-br !text-white shadow-lg shadow-[rgb(109_94_252_/_0.35)]'
+                  'from-brand-500 to-brand-600 !border-transparent bg-gradient-to-br !text-white shadow-lg shadow-[color-mix(in_oklab,var(--color-brand-500)_35%,transparent)]'
                 : 'hover:!bg-[var(--surface-hover)]'
             }`}
           >
